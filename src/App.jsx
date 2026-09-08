@@ -1,17 +1,20 @@
 import { useState } from 'react'
-import { Routes, Route, Link, Navigate } from 'react-router-dom'
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
 import { configOk } from './lib/supabase'
 import Login from './pages/Login'
 import Board from './pages/Board'
 import NovaDemanda from './pages/NovaDemanda'
 import Demanda from './pages/Demanda'
 import Candidatos from './pages/Candidatos'
+import Aprovar from './pages/Aprovar'
 
 const KEY = 'grafica.usuario'
 
 export default function App() {
+  const loc = useLocation()
   const [perfil, setPerfil] = useState(() => { try { return JSON.parse(localStorage.getItem(KEY)) } catch { return null } })
   if (!configOk) return <main className="login"><div className="card"><h1>Configuração faltando</h1><p>As variáveis <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code> não estão definidas. No Vercel: Settings → Environment Variables → adicione as duas e faça <strong>Redeploy</strong>.</p></div></main>
+  if (loc.pathname.startsWith('/a/') || loc.pathname.startsWith('/c/')) return <Routes><Route path="/a/:token" element={<Aprovar modo="candidato" />} /><Route path="/c/:token" element={<Aprovar modo="coordenacao" />} /></Routes>
   if (!perfil) return <Login onEntrar={p => { localStorage.setItem(KEY, JSON.stringify(p)); setPerfil(p) }} />
   const sair = () => { localStorage.removeItem(KEY); setPerfil(null) }
   return (

@@ -99,7 +99,7 @@ export default function Demanda({ perfil }) {
   }
 
   async function aprovar(tipo, ok) {
-    const quem = tipo === 'coordenacao' ? 'Flávio (coordenação)' : 'Candidato'
+    const quem = tipo === 'coordenacao' ? 'Partido' : 'Candidato'
     if (!ok) {
       if (!coment.trim()) return alert('Descreva o ajuste pedido.')
       await atualizar({ etapa: 'arte', aprov_coordenacao: false, aprov_candidato: false }, 'ajustes', `${quem} pediu ajustes de conteúdo: ${coment}`)
@@ -166,15 +166,29 @@ export default function Demanda({ perfil }) {
           </>}
 
           {d.etapa === 'aprovacao' && <>
-            <p className="muted">Baixe a prova, mande pelo WhatsApp para o Flávio e para o candidato, e registre as respostas aqui.</p>
+            {(() => {
+              const linkC = `${window.location.origin}/a/${d.token}`, linkF = `${window.location.origin}/c/${d.token}`
+              const msgC = `Olá! Segue a prévia do material "${d.titulo}". Abra o link, confira e, se tiver alguma observação, escreva por lá: ${linkC}`
+              const msgF = `Material "${d.titulo}" para aprovação: ${linkF}`
+              const tel = (d.candidato?.telefone || '').replace(/\D/g, '')
+              const wa = (t, m) => `https://wa.me/${t ? (t.length <= 11 ? '55' + t : t) : ''}?text=${encodeURIComponent(m)}`
+              return <>
+                {d.origem === 'candidato' && <div className="linkbox"><strong>Prévia para o candidato</strong><code>{linkC}</code>
+                  <div className="row"><button type="button" className="btn ghost" onClick={() => navigator.clipboard.writeText(linkC)}>Copiar</button><a className="btn" href={wa(tel, msgC)} target="_blank" rel="noreferrer">Enviar no WhatsApp</a></div>
+                  <p className="muted">O candidato vê só a arte e pode deixar observações ou marcar "está tudo certo".</p></div>}
+                <div className="linkbox f"><strong>Aprovação do partido</strong><code>{linkF}</code>
+                  <div className="row"><button type="button" className="btn ghost" onClick={() => navigator.clipboard.writeText(linkF)}>Copiar</button><a className="btn" href={wa('', msgF)} target="_blank" rel="noreferrer">Enviar no WhatsApp</a></div></div>
+                {evs.filter(e => e.tipo === 'observacao').length > 0 && <div className="obs"><strong>Observações do candidato</strong>{evs.filter(e => e.tipo === 'observacao').map(e => <p key={e.id}><span className="muted">{horaBR(e.em)}</span> · {e.detalhe.replace(/^Candidato( — [^:]+)? observou pelo link: /, '')}</p>)}</div>}
+              </>
+            })()}
             <textarea rows="2" placeholder="Comentário ou ajuste pedido" value={coment} onChange={e => setComent(e.target.value)} />
             <div className="aprov">
               <div>
-                <strong>Flávio (coordenação)</strong> {d.aprov_coordenacao ? <span className="ok">aprovado</span>
+                <strong>Aprovação partido</strong> {d.aprov_coordenacao ? <span className="ok">aprovado</span>
                   : <><button className="btn" onClick={() => aprovar('coordenacao', true)}>Aprovou</button><button className="btn ghost" onClick={() => aprovar('coordenacao', false)}>Pediu ajustes</button></>}
               </div>
               <div>
-                <strong>Candidato</strong> {d.origem !== 'candidato' ? <span className="muted">não se aplica</span> : d.aprov_candidato ? <span className="ok">aprovado</span>
+                <strong>Aprovação candidato</strong> {d.origem !== 'candidato' ? <span className="muted">não se aplica</span> : d.aprov_candidato ? <span className="ok">aprovado</span>
                   : <><button className="btn" onClick={() => aprovar('candidato', true)}>Registrar aprovação</button><button className="btn ghost" onClick={() => aprovar('candidato', false)}>Pediu ajustes</button></>}
               </div>
               {d.origem !== 'candidato' && !d.aprov_candidato && <button className="link" onClick={() => atualizar({ aprov_candidato: true, ...(d.aprov_coordenacao ? { etapa: 'fechamento' } : {}) }, 'aprovacao', 'Peça do partido: aprovação do candidato dispensada')}>Dispensar aprovação do candidato</button>}

@@ -40,7 +40,7 @@ export default function Board() {
                       {d.designer && <span> · {d.designer.nome}</span>}
                       {ult && <span className={'dot ' + RES[ult.resultado]} title={'v' + ult.versao + ' ' + ult.resultado} />}
                     </div>
-                    {key === 'aprovacao' && <div className="meta">{d.aprov_coordenacao ? '✓' : '○'} Flávio &nbsp; {d.aprov_candidato ? '✓' : '○'} candidato</div>}
+                    {key === 'aprovacao' && <div className="meta">{d.aprov_coordenacao ? '✓' : '○'} Partido &nbsp; {d.aprov_candidato ? '✓' : '○'} candidato</div>}
                   </Link>
                 )
               })}

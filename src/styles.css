@@ -53,3 +53,10 @@ aside{display:flex;flex-direction:column;gap:16px}
 .cnpj code{display:block;font-family:inherit;font-weight:700;font-size:15px;margin:4px 0}
 .tabs{display:flex;margin:10px 0}.tabs button{flex:1;font:inherit;font-weight:700;padding:7px;border:1px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}.tabs button.on{background:var(--ink);color:#fff}
 .troca{margin:14px 0;border-top:1px solid var(--rule);padding-top:10px}.troca summary{cursor:pointer;font-weight:700}
+.pub{max-width:640px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+.pub h1{font-size:22px} .pub .prova{margin:0} .big{font-size:18px}
+.tag{display:inline-block;padding:4px 10px;color:#fff;font-weight:700;font-size:14px} .tag.aprovado{background:var(--pass)} .tag.ressalvas{background:var(--warn)} .tag.reprovado{background:var(--fail)}
+.quem{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.linkbox{background:#f6f6f6;border-left:3px solid var(--c);padding:10px 12px;margin-bottom:12px;font-size:14px} .linkbox code{display:block;font-family:inherit;word-break:break-all;margin:4px 0 8px}
+.linkbox.f{border-left-color:var(--y)}
+.obs{background:#fff8dc;border-left:3px solid var(--warn);padding:10px 12px;margin-bottom:12px;font-size:14px}.obs p{margin:4px 0 0}
