@@ -125,8 +125,19 @@ export async function analyze(docs, opts = {}) {
   const dpiList = placed.filter(p => p.wmm > 3 && p.hmm > 3)
 
   // texto × margem de segurança
+  // Sem TrimBox (Canva CMYK rasteriza a página): se a página = tamanho final + margem uniforme, estima o corte centrado
+  let synth = null, synthBleed = 0
+  if (!trimBox && tw && th) {
+    const Mtmp = swap ? { w: mm(media.h), h: mm(media.w) } : { w: mm(media.w), h: mm(media.h) }
+    const gw = (Mtmp.w - tw) / 2, gh = (Mtmp.h - th) / 2
+    if (gw >= 1 && gh >= 1 && Math.abs(gw - gh) < 0.6 && gw <= 8) {
+      const g = gw * MM, w = (swap ? th : tw) * MM, h = (swap ? tw : th) * MM
+      synth = { x: media.x + g, y: media.y + g, w, h }
+      synthBleed = gw <= 4 ? gw : 3
+    }
+  }
   const tc = await pj.getTextContent()
-  const trimEff = trimBox || media
+  const trimEff = trimBox || synth || media
   const near = []; let textItems = 0
   for (const it of tc.items) {
     if (!it.str || !it.str.trim()) continue; textItems++
@@ -154,7 +165,8 @@ export async function analyze(docs, opts = {}) {
       msg = `Página: ${fmt(M.w)} × ${fmt(M.h)} mm · sem TrimBox (o PDF não diz onde cortar)`
       if (tw && th) {
         if (close(M.w, tw) && close(M.h, th)) { s = 'fail'; msg += `\nA página tem exatamente o tamanho final: não há sangria. Reexporte com ${bleedMin} mm de sangria e marcas de corte.` }
-        else if (gw >= 1 && gh >= 1 && Math.abs(gw - gh) < 0.6 && gw <= 8) { s = gw >= bleedMin ? 'warn' : 'fail'; msg += `\nParece haver ${fmt(gw)} mm de sangria por lado, mas sem marcas/TrimBox. Exporte com marcas de corte (Canva: "Marcas de corte e sangria"; Illustrator: "Usar sangria do documento").` }
+        else if (synth && gw >= 5.5 && gw <= 7.5) { msg += `\nPágina com marcas de corte e sangria no padrão Canva (3 mm de sangria + área das marcas). Corte estimado no centro: ${fmt(tw)} × ${fmt(th)} mm — a gráfica corta pelas marcas.` }
+        else if (synth) { s = gw >= bleedMin ? 'warn' : 'fail'; msg += `\nParece haver ${fmt(gw)} mm de sangria por lado, mas sem marcas de corte. Exporte com marcas (Canva: "Marcas de corte e sangria"; Illustrator: "Usar sangria do documento").` }
         else { s = 'fail'; msg += `\nNão bate com ${fmt(tw)} × ${fmt(th)} mm nem com esse tamanho + sangria.` }
       } else { s = 'warn'; msg += `\nDemanda sem tamanho final cadastrado. Mais próximo de: ${nearest.n}.` }
     }
@@ -173,17 +185,19 @@ export async function analyze(docs, opts = {}) {
     let s = 'pass', msg
     if (!dpiList.length) msg = 'Nenhuma imagem raster relevante (só vetores/texto).'
     else {
-      const min = Math.min(...dpiList.map(p => p.dpi)), low = dpiList.filter(p => p.dpi < 300).length
+      const min = Math.min(...dpiList.map(p => p.dpi)), low = dpiList.filter(p => p.dpi < 295).length
       msg = `${dpiList.length} imagem(ns) · menor resolução efetiva: ${Math.round(min)} dpi`
       if (min < 200) { s = 'fail'; msg += `\n${low} imagem(ns) abaixo de 300 dpi — vão sair pixeladas.` }
-      else if (min < 300) { s = 'warn'; msg += `\n${low} imagem(ns) entre 200 e 300 dpi: aceitável em cartaz, ruim em peça de mão.` }
+      else if (min < 295) { s = 'warn'; msg += `\n${low} imagem(ns) entre 200 e 300 dpi: aceitável em cartaz, ruim em peça de mão.` }
     }
     checks.push({ t: 'Resolução (300 dpi mín.)', s, msg })
   }
   { // 4 curvas
     let s = 'pass', msg
     const list = [...fonts.entries()]
-    if (!textItems && !list.length) msg = 'Nenhum texto vivo: todo o texto está em curvas.'
+    const raster = !textItems && !list.length && dpiList.length === 1 && dpiList[0].wmm > mm(media.w) * 0.95
+    if (raster) msg = `Página inteira rasterizada (exportação CMYK do Canva): o texto virou imagem a ${Math.round(dpiList[0].dpi)} dpi. Aceitável para santinho e adesivo; letras muito pequenas podem serrilhar — confira na prova.`
+    else if (!textItems && !list.length) msg = 'Nenhum texto vivo: todo o texto está em curvas.'
     else {
       const missing = list.filter(([, e]) => !e).map(([n]) => n)
       msg = `${textItems} bloco(s) de texto vivo · fontes: ${list.map(([n]) => n).join(', ') || '—'}`
@@ -203,7 +217,7 @@ export async function analyze(docs, opts = {}) {
   const worst = checks.reduce((a, c) => order[c.s] < order[a] ? c.s : a, 'pass')
   const resultado = worst === 'pass' ? 'aprovado' : worst === 'warn' ? 'ressalvas' : 'reprovado'
   return { resultado, checks, images: dpiList.sort((a, b) => a.dpi - b.dpi), corte: T || M, pagina: pi + 1, paginas: pjDoc.numPages,
-    _geo: { media, trimBox, bleedBox, trimEff, safe, rot } }
+    _geo: { media, trimBox, bleedBox: bleedBox || (synth ? { x: synth.x - synthBleed * MM, y: synth.y - synthBleed * MM, w: synth.w + 2 * synthBleed * MM, h: synth.h + 2 * synthBleed * MM } : null), trimEff, safe, rot } }
 }
 
 /** Renderiza a prova com marcas e devolve um Blob PNG. */
