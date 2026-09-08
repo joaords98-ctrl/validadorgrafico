@@ -29,7 +29,7 @@ Em Settings → Environment Variables adicione `VITE_SUPABASE_URL` e `VITE_SUPAB
 |---|---|---|
 | Entrada | qualquer um | Cria a demanda (origem, candidato, peça, tamanho final, prazo, briefing) |
 | Arte | designer | Assume, envia o PDF. A validação roda na hora: formato/sangria, CMYK, dpi efetivo, curvas, margem de segurança. Reprovado fica em Arte; OK vai para Aprovação |
-| Aprovação | designer registra | Prova PNG com marcas é gerada e vai por WhatsApp para o Flávio e o candidato; o designer registra as respostas. "Ajustes" volta para Arte com o comentário |
+| Aprovação | designer registra | Prova PNG com marcas é gerada e vai por WhatsApp para o coordenação e o candidato; o designer registra as respostas. "Ajustes" volta para Arte com o comentário |
 | Fechamento | designer | Anexa o PDF/X-1a final e marca como enviado à gráfica |
 
 Tudo fica no histórico da demanda (quem fez o quê e quando).

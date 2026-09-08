@@ -86,7 +86,7 @@ export default function Aprovar({ modo }) {
             </div>
           </> : <>
             <h2>Aprovação do partido</h2>
-            <div className="status"><span className={d.aprov_coordenacao ? 'ok' : 'muted'}>{d.aprov_coordenacao ? '✓' : '○'} Partido</span>{d.origem === 'candidato' && <span className={d.aprov_candidato ? 'ok' : 'muted'}> &nbsp; {d.aprov_candidato ? '✓' : '○'} Candidato</span>}</div>
+            <p className="muted">Você está respondendo pelo partido. Status: <b className={d.aprov_coordenacao ? 'ok' : ''}>partido {d.aprov_coordenacao ? 'aprovou' : 'pendente'}</b>{d.origem === 'candidato' && <> · <b className={d.aprov_candidato ? 'ok' : ''}>candidato {d.aprov_candidato ? 'aprovou' : 'pendente'}</b></>}</p>
             <label>Comentário ou ajuste<textarea rows="3" value={coment} onChange={e => setComent(e.target.value)} placeholder="Se pedir ajuste, diga o que mudar" /></label>
             <div className="row">
               <button className="btn" onClick={() => responder(true)} disabled={busy || d.aprov_coordenacao}>{d.aprov_coordenacao ? 'Já aprovado' : 'Aprovar'}</button>

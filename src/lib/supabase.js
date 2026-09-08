@@ -10,7 +10,7 @@ export const ETAPAS = [
   ['fechamento', 'Envio para produção'],
   ['concluida', 'Concluídas'],
 ]
-export const ORIGENS = { candidato: 'Candidato', partido: 'Partido', flavio: 'Flávio' }
+export const ORIGENS = { candidato: 'Candidato', partido: 'Partido', flavio: 'Coordenação' }
 export const PECAS = ['Santinho', 'Adesivo', 'Cartaz', 'Banner', 'Panfleto', 'Flyer', 'Faixa', 'Outro']
 
 export async function registrar(demanda_id, tipo, detalhe, por) {

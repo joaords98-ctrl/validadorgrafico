@@ -34,7 +34,7 @@ export default function Board() {
                   <Link key={d.id} to={'/d/' + d.id} className="cardk">
                     <div className="num">#{d.numero} · {d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}</div>
                     <div className="tit">{d.titulo}</div>
-                    <div className="meta">{d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Flávio')}</div>
+                    <div className="meta">{d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação')}</div>
                     <div className="meta">
                       <span className={atrasada ? 'late' : ''}>{d.prazo ? 'prazo ' + dataBR(d.prazo) : 'sem prazo'}</span>
                       {d.designer && <span> · {d.designer.nome}</span>}
