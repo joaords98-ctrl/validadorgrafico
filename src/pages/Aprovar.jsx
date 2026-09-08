@@ -58,6 +58,7 @@ export default function Aprovar({ modo }) {
   const emAprovacao = d.etapa === 'aprovacao'
   return (
     <main className="pub">
+      <div className="pubhead"><img src="/missao.png" alt="Missão" /></div>
       <div className="card">
         <div className="num">{cand ? 'Prévia da arte' : 'Aprovação de material'} · #{d.numero}</div>
         <h1>{d.titulo}</h1>

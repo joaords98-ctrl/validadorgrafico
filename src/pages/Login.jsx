@@ -15,7 +15,7 @@ export default function Login({ onEntrar }) {
   return (
     <main className="login">
       <form onSubmit={entrar} className="card">
-        <h1><span className="cmyk"><i /><i /><i /><i /></span>Materiais impressos</h1>
+        <img className="logo" src="/missao.png" alt="Missão" /><h1>Validador Gráfico</h1>
         <p className="muted">Quem está usando? O nome fica registrado no histórico de cada demanda.</p>
         {lista.length > 0 && <div className="nomes">{lista.map(p => <button type="button" key={p.id} className="btn ghost" onClick={() => onEntrar(p)}>{p.nome}</button>)}</div>}
         <label>Ou digite um nome novo<input value={nome} onChange={e => setNome(e.target.value)} placeholder="ex. Murilo" autoFocus /></label>

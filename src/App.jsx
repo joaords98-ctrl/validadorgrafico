@@ -22,7 +22,7 @@ export default function App() {
   return (
     <>
       <header className="top">
-        <Link to="/" className="brand"><span className="cmyk"><i /><i /><i /><i /></span>Materiais impressos</Link>
+        <Link to="/" className="brand"><img src="/missao.png" alt="Missão" /><span>Validador Gráfico<small>Materiais impressos · Missão Paraná</small></span></Link>
         <nav>
           <Link to="/">Quadro</Link>
           <Link to="/candidatos">Candidatos</Link>
