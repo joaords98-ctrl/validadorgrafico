@@ -1,19 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-export default function Login() {
-  const [email, setEmail] = useState(''), [senha, setSenha] = useState(''), [erro, setErro] = useState('')
+export default function Login({ onEntrar }) {
+  const [lista, setLista] = useState([])
+  const [nome, setNome] = useState('')
+  const [erro, setErro] = useState('')
+  useEffect(() => { supabase.from('gr_perfis').select('id,nome,papel').order('nome').then(({ data }) => setLista(data || [])) }, [])
   async function entrar(e) {
     e.preventDefault(); setErro('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    if (error) setErro('E-mail ou senha incorretos.')
+    const n = nome.trim(); if (!n) return
+    let p = lista.find(x => x.nome.toLowerCase() === n.toLowerCase())
+    if (!p) { const { data, error } = await supabase.from('gr_perfis').insert({ nome: n }).select().single(); if (error) return setErro(error.message); p = data }
+    onEntrar(p)
   }
   return (
     <main className="login">
       <form onSubmit={entrar} className="card">
         <h1><span className="cmyk"><i /><i /><i /><i /></span>Materiais impressos</h1>
-        <p className="muted">Fluxo de trabalho da equipe de design e gráfica.</p>
-        <label>E-mail<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus /></label>
-        <label>Senha<input type="password" value={senha} onChange={e => setSenha(e.target.value)} required /></label>
+        <p className="muted">Quem está usando? O nome fica registrado no histórico de cada demanda.</p>
+        {lista.length > 0 && <div className="nomes">{lista.map(p => <button type="button" key={p.id} className="btn ghost" onClick={() => onEntrar(p)}>{p.nome}</button>)}</div>}
+        <label>Ou digite um nome novo<input value={nome} onChange={e => setNome(e.target.value)} placeholder="ex. Murilo" autoFocus /></label>
         {erro && <p className="err">{erro}</p>}
         <button className="btn" type="submit">Entrar</button>
       </form>

@@ -15,13 +15,12 @@ export default function Demanda({ perfil }) {
   const [busy, setBusy] = useState('')
   const [coment, setComent] = useState('')
   const [provaUrl, setProvaUrl] = useState(null)
-  const coord = perfil?.papel === 'coordenacao'
 
   const carregar = useCallback(async () => {
     const [{ data: dem }, { data: a }, { data: e }] = await Promise.all([
-      supabase.from('demandas').select('*, candidato:candidatos(*), designer:perfis!demandas_designer_id_fkey(nome)').eq('id', id).single(),
-      supabase.from('arquivos').select('*, enviado:perfis(nome)').eq('demanda_id', id).order('versao', { ascending: false }),
-      supabase.from('eventos').select('*, autor:perfis(nome)').eq('demanda_id', id).order('em', { ascending: false }),
+      supabase.from('gr_demandas').select('*, candidato:gr_candidatos(*), designer:gr_perfis!gr_demandas_designer_id_fkey(nome)').eq('id', id).single(),
+      supabase.from('gr_arquivos').select('*, enviado:gr_perfis(nome)').eq('demanda_id', id).order('versao', { ascending: false }),
+      supabase.from('gr_eventos').select('*, autor:gr_perfis(nome)').eq('demanda_id', id).order('em', { ascending: false }),
     ])
     setD(dem); setArqs(a || []); setEvs(e || [])
     const ult = (a || [])[0]
@@ -30,7 +29,7 @@ export default function Demanda({ perfil }) {
   useEffect(() => { carregar() }, [carregar])
 
   async function atualizar(patch, tipo, detalhe) {
-    await supabase.from('demandas').update(patch).eq('id', id)
+    await supabase.from('gr_demandas').update(patch).eq('id', id)
     if (tipo) await registrar(id, tipo, detalhe, perfil?.id)
     carregar()
   }
@@ -52,7 +51,7 @@ export default function Demanda({ perfil }) {
       if (up1.error) throw up1.error
       await supabase.storage.from('materiais').upload(`${base}-prova.png`, prova, { contentType: 'image/png' })
       const { _geo, ...relatorio } = rel
-      await supabase.from('arquivos').insert({ demanda_id: id, versao, path: `${base}.pdf`, prova_path: `${base}-prova.png`, relatorio, resultado: rel.resultado, enviado_por: perfil?.id })
+      await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path: `${base}.pdf`, prova_path: `${base}-prova.png`, relatorio, resultado: rel.resultado, enviado_por: perfil?.id })
       await registrar(id, 'validacao', `v${versao}: ${RES_TXT[rel.resultado]}`, perfil?.id)
       // Arquivo OK? → aprovação. Não → continua em arte (ajustes técnicos).
       if (rel.resultado !== 'reprovado') await atualizar({ etapa: 'aprovacao', aprov_coordenacao: false, aprov_candidato: false }, 'etapa', 'Arquivo OK → Aprovação executiva e política')
@@ -82,7 +81,7 @@ export default function Demanda({ perfil }) {
     const path = `${id}/v${versao}-final.pdf`
     const { error } = await supabase.storage.from('materiais').upload(path, file, { contentType: 'application/pdf' })
     if (!error) {
-      await supabase.from('arquivos').insert({ demanda_id: id, versao, path, final: true, enviado_por: perfil?.id })
+      await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path, final: true, enviado_por: perfil?.id })
       await registrar(id, 'final', `PDF/X-1a final anexado (v${versao})`, perfil?.id)
       carregar()
     }
@@ -111,6 +110,10 @@ export default function Demanda({ perfil }) {
         <section className="card">
           <h2>{etapaNome}</h2>
           {busy && <p className="busy">{busy}</p>}
+          {d.candidato?.cnpj_campanha && d.etapa !== 'concluida' && (() => {
+            const txt = `CNPJ CONTRATANTE ${d.candidato.cnpj_campanha}${d.candidato.cnpj_grafica ? ` • CNPJ GRÁFICA ${d.candidato.cnpj_grafica}` : ''}${d.quantidade ? ` • TIRAGEM ${d.quantidade} UN.` : ''}`
+            return <div className="cnpj"><strong>Rodapé obrigatório</strong>{d.candidato.status_cnpj && d.candidato.status_cnpj !== 'OK' && <span className="err"> · {d.candidato.status_cnpj}</span>}<code>{txt}</code><button type="button" className="link" onClick={() => navigator.clipboard.writeText(txt)}>copiar</button></div>
+          })()}
 
           {d.etapa === 'entrada' && <>
             <p>{d.briefing || 'Sem briefing.'}</p>
@@ -128,13 +131,12 @@ export default function Demanda({ perfil }) {
           </>}
 
           {d.etapa === 'aprovacao' && <>
-            <p className="muted">Mostre a prova ao candidato (baixe e mande pelo WhatsApp) e registre a resposta aqui.</p>
+            <p className="muted">Baixe a prova, mande pelo WhatsApp para o Flávio e para o candidato, e registre as respostas aqui.</p>
             <textarea rows="2" placeholder="Comentário ou ajuste pedido" value={coment} onChange={e => setComent(e.target.value)} />
             <div className="aprov">
               <div>
-                <strong>Flávio (coordenação)</strong> {d.aprov_coordenacao ? <span className="ok">aprovado</span> : coord
-                  ? <><button className="btn" onClick={() => aprovar('coordenacao', true)}>Aprovar</button><button className="btn ghost" onClick={() => aprovar('coordenacao', false)}>Pedir ajustes</button></>
-                  : <span className="muted">aguardando</span>}
+                <strong>Flávio (coordenação)</strong> {d.aprov_coordenacao ? <span className="ok">aprovado</span>
+                  : <><button className="btn" onClick={() => aprovar('coordenacao', true)}>Aprovou</button><button className="btn ghost" onClick={() => aprovar('coordenacao', false)}>Pediu ajustes</button></>}
               </div>
               <div>
                 <strong>Candidato</strong> {d.origem !== 'candidato' ? <span className="muted">não se aplica</span> : d.aprov_candidato ? <span className="ok">aprovado</span>
@@ -178,7 +180,7 @@ export default function Demanda({ perfil }) {
             <h2>Histórico</h2>
             {evs.map(e => <div key={e.id} className="ev"><span className="muted">{horaBR(e.em)} · {e.autor?.nome}</span><br />{e.detalhe}</div>)}
           </section>
-          {d.etapa !== 'concluida' && <button className="link danger" onClick={async () => { if (confirm('Excluir esta demanda e todos os arquivos?')) { await supabase.from('demandas').delete().eq('id', id); nav('/') } }}>Excluir demanda</button>}
+          {d.etapa !== 'concluida' && <button className="link danger" onClick={async () => { if (confirm('Excluir esta demanda e todos os arquivos?')) { await supabase.from('gr_demandas').delete().eq('id', id); nav('/') } }}>Excluir demanda</button>}
         </aside>
       </div>
     </main>

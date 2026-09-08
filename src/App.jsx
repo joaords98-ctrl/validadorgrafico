@@ -1,27 +1,19 @@
-import { useEffect, useState } from 'react'
-import { Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom'
-import { supabase } from './lib/supabase'
+import { useState } from 'react'
+import { Routes, Route, Link, Navigate } from 'react-router-dom'
+import { configOk } from './lib/supabase'
 import Login from './pages/Login'
 import Board from './pages/Board'
 import NovaDemanda from './pages/NovaDemanda'
 import Demanda from './pages/Demanda'
 import Candidatos from './pages/Candidatos'
 
+const KEY = 'grafica.usuario'
+
 export default function App() {
-  const [session, setSession] = useState(undefined)
-  const [perfil, setPerfil] = useState(null)
-  const nav = useNavigate()
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
-    return () => sub.subscription.unsubscribe()
-  }, [])
-  useEffect(() => {
-    if (!session) { setPerfil(null); return }
-    supabase.from('perfis').select('*').eq('id', session.user.id).single().then(({ data }) => setPerfil(data))
-  }, [session])
-  if (session === undefined) return null
-  if (!session) return <Login />
+  const [perfil, setPerfil] = useState(() => { try { return JSON.parse(localStorage.getItem(KEY)) } catch { return null } })
+  if (!configOk) return <main className="login"><div className="card"><h1>Configuração faltando</h1><p>As variáveis <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code> não estão definidas. No Vercel: Settings → Environment Variables → adicione as duas e faça <strong>Redeploy</strong>.</p></div></main>
+  if (!perfil) return <Login onEntrar={p => { localStorage.setItem(KEY, JSON.stringify(p)); setPerfil(p) }} />
+  const sair = () => { localStorage.removeItem(KEY); setPerfil(null) }
   return (
     <>
       <header className="top">
@@ -30,7 +22,7 @@ export default function App() {
           <Link to="/">Quadro</Link>
           <Link to="/candidatos">Candidatos</Link>
           <Link to="/nova" className="btn">Nova demanda</Link>
-          <button className="link" onClick={() => supabase.auth.signOut().then(() => nav('/'))}>{perfil?.nome || 'Sair'} · sair</button>
+          <button className="link" onClick={sair}>{perfil.nome} · trocar</button>
         </nav>
       </header>
       <Routes>

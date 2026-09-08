@@ -8,14 +8,14 @@ export default function NovaDemanda({ perfil }) {
   const [cands, setCands] = useState([])
   const [f, setF] = useState({ titulo: '', origem: 'candidato', candidato_id: '', peca: 'Santinho', largura_mm: 100, altura_mm: 70, quantidade: '', prazo: '', briefing: '' })
   const [erro, setErro] = useState('')
-  useEffect(() => { supabase.from('candidatos').select('id,nome,cargo').eq('ativo', true).order('nome').then(({ data }) => setCands(data || [])) }, [])
+  useEffect(() => { supabase.from('gr_candidatos').select('id,nome,cargo').eq('ativo', true).order('nome').then(({ data }) => setCands(data || [])) }, [])
   const set = k => e => setF({ ...f, [k]: e.target.value })
   function formato(e) { const s = STD.find(x => x[0] === e.target.value); if (s) setF({ ...f, largura_mm: s[1], altura_mm: s[2] }) }
   async function salvar(e) {
     e.preventDefault(); setErro('')
     if (f.origem === 'candidato' && !f.candidato_id) return setErro('Escolha o candidato.')
     const row = { ...f, candidato_id: f.candidato_id || null, quantidade: f.quantidade || null, prazo: f.prazo || null, criado_por: perfil?.id }
-    const { data, error } = await supabase.from('demandas').insert(row).select().single()
+    const { data, error } = await supabase.from('gr_demandas').insert(row).select().single()
     if (error) return setErro(error.message)
     await registrar(data.id, 'criada', `Demanda criada (${ORIGENS[f.origem]})`, perfil?.id)
     nav('/d/' + data.id)

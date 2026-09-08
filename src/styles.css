@@ -47,3 +47,7 @@ aside{display:flex;flex-direction:column;gap:16px}
 .imgrow{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);padding:2px 0} .imgrow .fail{color:var(--fail)}
 .prova{width:100%;display:block;border:1px solid var(--rule);margin-bottom:10px}
 .ver,.ev{font-size:14px;padding:6px 0;border-top:1px solid var(--rule)} .ver{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+
+.nomes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.cnpj{background:#fff8dc;border-left:3px solid var(--y);padding:10px 12px;margin-bottom:12px;font-size:14px}
+.cnpj code{display:block;font-family:inherit;font-weight:700;font-size:15px;margin:4px 0}

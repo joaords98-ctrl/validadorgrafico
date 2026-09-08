@@ -2,15 +2,14 @@
 
 App interno para rodar o fluxo: Entrada → Arte → Validação técnica (automática no upload) → Aprovação executiva e política → Envio para produção.
 
-Stack: React (Vite) + Supabase (Postgres, Auth, Storage) + Vercel. O validador roda no navegador (pdf.js + pdf-lib), nenhum PDF passa por servidor próprio.
+Stack: React (Vite) + Supabase (Postgres, Storage) + Vercel. Sem login: cada pessoa escolhe o nome ao abrir e ele fica gravado no histórico. O validador roda no navegador (pdf.js + pdf-lib), nenhum PDF passa por servidor próprio.
 
 ## 1. Supabase
+As tabelas têm prefixo `gr_` para conviver com os outros apps no mesmo projeto.
 1. Crie um projeto em supabase.com (região São Paulo).
 2. SQL Editor → cole e rode `supabase/migrations/0001_init.sql`.
-3. Authentication → Providers → Email: deixe "Confirm email" desligado (uso interno).
-4. Authentication → Users → "Add user" para cada pessoa (e-mail + senha). O perfil é criado automaticamente.
-5. Table Editor → `perfis`: mude o `papel` do Flávio para `coordenacao` (só ele aprova como coordenação).
-6. Project Settings → API: copie a URL e a `anon` key.
+3. Rode também `supabase/migrations/0002_sem_login.sql` (libera acesso sem login).
+4. Project Settings → API: copie a URL e a `anon` key.
 
 ## 2. Rodar local (macOS)
 ```bash
@@ -30,7 +29,7 @@ Em Settings → Environment Variables adicione `VITE_SUPABASE_URL` e `VITE_SUPAB
 |---|---|---|
 | Entrada | qualquer um | Cria a demanda (origem, candidato, peça, tamanho final, prazo, briefing) |
 | Arte | designer | Assume, envia o PDF. A validação roda na hora: formato/sangria, CMYK, dpi efetivo, curvas, margem de segurança. Reprovado fica em Arte; OK vai para Aprovação |
-| Aprovação | Flávio + candidato | Prova PNG com marcas é gerada. Flávio aprova no app; a resposta do candidato (via WhatsApp) é registrada pelo designer. "Ajustes" volta para Arte com o comentário |
+| Aprovação | designer registra | Prova PNG com marcas é gerada e vai por WhatsApp para o Flávio e o candidato; o designer registra as respostas. "Ajustes" volta para Arte com o comentário |
 | Fechamento | designer | Anexa o PDF/X-1a final e marca como enviado à gráfica |
 
 Tudo fica no histórico da demanda (quem fez o quê e quando).

@@ -8,8 +8,8 @@ export default function Board() {
   const [itens, setItens] = useState([])
   const [busca, setBusca] = useState('')
   useEffect(() => {
-    supabase.from('demandas')
-      .select('*, candidato:candidatos(nome), designer:perfis!demandas_designer_id_fkey(nome), arquivos(resultado, versao)')
+    supabase.from('gr_demandas')
+      .select('*, candidato:gr_candidatos(nome), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(resultado, versao)')
       .order('prazo', { ascending: true, nullsFirst: false })
       .then(({ data }) => setItens(data || []))
   }, [])
