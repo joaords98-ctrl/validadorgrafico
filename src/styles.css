@@ -51,3 +51,5 @@ aside{display:flex;flex-direction:column;gap:16px}
 .nomes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .cnpj{background:#fff8dc;border-left:3px solid var(--y);padding:10px 12px;margin-bottom:12px;font-size:14px}
 .cnpj code{display:block;font-family:inherit;font-weight:700;font-size:15px;margin:4px 0}
+.tabs{display:flex;margin:10px 0}.tabs button{flex:1;font:inherit;font-weight:700;padding:7px;border:1px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}.tabs button.on{background:var(--ink);color:#fff}
+.troca{margin:14px 0;border-top:1px solid var(--rule);padding-top:10px}.troca summary{cursor:pointer;font-weight:700}
