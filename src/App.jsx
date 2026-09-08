@@ -7,6 +7,8 @@ import NovaDemanda from './pages/NovaDemanda'
 import Demanda from './pages/Demanda'
 import Candidatos from './pages/Candidatos'
 import Aprovar from './pages/Aprovar'
+import Lote from './pages/Lote'
+import Relatorio from './pages/Relatorio'
 
 const KEY = 'grafica.usuario'
 
@@ -24,6 +26,8 @@ export default function App() {
         <nav>
           <Link to="/">Quadro</Link>
           <Link to="/candidatos">Candidatos</Link>
+          <Link to="/relatorio">Relatório</Link>
+          <Link to="/lote">Criar em lote</Link>
           <Link to="/nova" className="btn">Nova demanda</Link>
           <button className="link" onClick={sair}>{perfil.nome} · trocar</button>
         </nav>
@@ -32,6 +36,8 @@ export default function App() {
         <Route path="/" element={<Board perfil={perfil} />} />
         <Route path="/nova" element={<NovaDemanda perfil={perfil} />} />
         <Route path="/candidatos" element={<Candidatos />} />
+        <Route path="/lote" element={<Lote perfil={perfil} />} />
+        <Route path="/relatorio" element={<Relatorio />} />
         <Route path="/d/:id" element={<Demanda perfil={perfil} />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

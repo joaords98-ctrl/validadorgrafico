@@ -361,3 +361,72 @@ export async function renderProofImage(report, label = '') {
   c.fillText(`${label} · ${g.info.fmt} ${g.info.w}×${g.info.h} px · ${corte} · prova de tela, cores não calibradas`, pad + 8 * sw + px(3), by + px(0.8))
   return new Promise(r => cv.toBlob(r, 'image/png'))
 }
+
+/* ───────── CNPJ e tiragem (texto vivo ou OCR) ───────── */
+const digits = s => (s || '').replace(/\D/g, '')
+
+async function textoDoPdf(docs) {
+  let t = ''
+  for (let p = 1; p <= docs.pjDoc.numPages; p++) { const tc = await (await docs.pjDoc.getPage(p)).getTextContent(); t += tc.items.map(i => i.str).join(' ') + '\n' }
+  return t
+}
+async function canvasDoPdf(docs, p) {
+  const pg = await docs.pjDoc.getPage(p); const base = pg.getViewport({ scale: 1 })
+  const scale = Math.min(4.2, 3000 / Math.max(base.width, base.height)) // ~300 dpi, limitado a 3000 px
+  const vp = pg.getViewport({ scale })
+  const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height)
+  await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise; return cv
+}
+function girar(cv, ang) {
+  const o = document.createElement('canvas'); const c = o.getContext('2d')
+  if (ang === 90 || ang === 270) { o.width = cv.height; o.height = cv.width } else { o.width = cv.width; o.height = cv.height }
+  c.translate(o.width / 2, o.height / 2); c.rotate(ang * Math.PI / 180); c.drawImage(cv, -cv.width / 2, -cv.height / 2); return o
+}
+async function ocr(canvases, onStatus) {
+  const { createWorker, PSM } = await import('tesseract.js')
+  const w = await createWorker('por', 1, { logger: m => { if (m.status === 'recognizing text' && onStatus) onStatus(`OCR ${Math.round(m.progress * 100)}%`) } })
+  await w.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT })
+  let t = ''
+  for (const cv of canvases) for (const ang of [0, 90, 270]) { const { data } = await w.recognize(girar(cv, ang)); t += data.text + '\n' }
+  await w.terminate(); return t
+}
+
+/**
+ * fontes: [{docs}|{file}] — todos os lados da versão.
+ * cand: { nome, cnpj_campanha, cnpj_grafica }, quantidade, outros: [{nome,cnpj}] (outros candidatos, para detectar troca)
+ */
+export async function checarCnpj(fontes, { cand, quantidade, outros = [] }, onStatus) {
+  if (!cand?.cnpj_campanha) return { t: 'CNPJ e tiragem', s: 'warn', msg: 'Candidato sem CNPJ cadastrado — não dá para conferir o rodapé.' }
+  let texto = '', viaOcr = false
+  for (const f of fontes) if (f.docs) texto += await textoDoPdf(f.docs)
+  if (digits(texto).length < 14) {
+    viaOcr = true; onStatus?.('Lendo o rodapé por OCR…')
+    const cvs = []
+    for (const f of fontes) {
+      if (f.docs) for (let p = 1; p <= f.docs.pjDoc.numPages; p++) cvs.push(await canvasDoPdf(f.docs, p))
+      else if (f.file) { const bmp = await createImageBitmap(f.file); const cv = document.createElement('canvas'); const sc = Math.min(1, 2400 / Math.max(bmp.width, bmp.height)); cv.width = bmp.width * sc; cv.height = bmp.height * sc; cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height); cvs.push(cv) }
+    }
+    texto = await ocr(cvs, onStatus)
+  }
+  const d = digits(texto)
+  const camp = digits(cand.cnpj_campanha), graf = digits(cand.cnpj_grafica)
+  const temCamp = d.includes(camp), raizCamp = d.includes(camp.slice(0, 8))
+  const temGraf = graf ? d.includes(graf) : null
+  const outro = outros.find(o => o.cnpj && digits(o.cnpj) !== camp && d.includes(digits(o.cnpj)))
+  const tirM = texto.match(/tiragem\D{0,12}([\d.]{2,9})/i)
+  const tir = tirM ? parseInt(tirM[1].replace(/\./g, ''), 10) : null
+  const via = viaOcr ? ' (lido por OCR — texto rasterizado)' : ''
+  let s = 'pass', linhas = []
+  if (outro) { s = 'fail'; linhas.push(`CNPJ de OUTRO candidato na arte: ${outro.cnpj} (${outro.nome}). Esperado ${cand.cnpj_campanha} (${cand.nome}).`) }
+  else if (temCamp) linhas.push(`CNPJ contratante ${cand.cnpj_campanha} encontrado.`)
+  else if (raizCamp) { s = 'warn'; linhas.push(`Raiz do CNPJ ${cand.cnpj_campanha.slice(0, 10)} encontrada, mas os dígitos finais não bateram${viaOcr ? ' — pode ser erro de leitura do OCR; confira na prova' : ''}.`) }
+  else { s = viaOcr ? 'warn' : 'fail'; linhas.push(`CNPJ contratante ${cand.cnpj_campanha} NÃO encontrado${viaOcr ? ' pelo OCR. Confira na prova — pode estar faltando ou em fonte muito pequena para leitura' : ' no texto da arte'}.`) }
+  if (graf) linhas.push(temGraf ? `CNPJ gráfica ${cand.cnpj_grafica} encontrado.` : `CNPJ gráfica ${cand.cnpj_grafica} não encontrado${viaOcr ? ' (OCR)' : ''}.`)
+  if (graf && !temGraf && s === 'pass') s = 'warn'
+  if (quantidade) {
+    if (tir == null) { if (s === 'pass') s = 'warn'; linhas.push(`Tiragem não encontrada (esperado ${quantidade} un.).`) }
+    else if (tir !== Number(quantidade)) { s = 'fail'; linhas.push(`Tiragem na arte: ${tir} — na demanda: ${quantidade}. Tem que ser igual.`) }
+    else linhas.push(`Tiragem ${tir} un. confere.`)
+  } else if (tir != null) linhas.push(`Tiragem na arte: ${tir} un. (demanda sem quantidade cadastrada).`)
+  return { t: 'CNPJ e tiragem', s, msg: linhas.join('\n') + via }
+}

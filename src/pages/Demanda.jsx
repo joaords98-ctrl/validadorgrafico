@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase, ETAPAS, ORIGENS, registrar, dataBR, horaBR } from '../lib/supabase'
-import { openPdf, analyze, renderProof, analyzeImage, renderProofImage } from '../lib/validator'
+import { openPdf, analyze, renderProof, analyzeImage, renderProofImage, checarCnpj } from '../lib/validator'
 
 const ICON = { pass: '✓', warn: '!', fail: '✕' }
 
@@ -54,7 +54,7 @@ export default function Demanda({ perfil }) {
       const opts = { targetW: d.largura_mm, targetH: d.altura_mm }
       const versao = (arqs[0]?.versao || 0) + 1
       const base = `${id}/v${versao}`
-      const lados = []; const uploads = []
+      const lados = []; const uploads = []; const fontes = []
       let n = 0
       for (const file of files) {
         const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
@@ -62,7 +62,7 @@ export default function Demanda({ perfil }) {
         const path = files.length === 1 ? `${base}.${ext}` : `${base}-${uploads.length + 1}.${ext}`
         uploads.push({ path, file })
         if (isPdf) {
-          const docs = await openPdf(new Uint8Array(await file.arrayBuffer()))
+          const docs = await openPdf(new Uint8Array(await file.arrayBuffer())); fontes.push({ docs })
           for (let p = 0; p < docs.pjDoc.numPages; p++) {
             n++; setBusy(`Validando lado ${n}…`)
             const rel = await analyze(docs, { ...opts, page: p })
@@ -70,7 +70,7 @@ export default function Demanda({ perfil }) {
             lados.push({ rel, prova })
           }
         } else {
-          n++; setBusy(`Validando lado ${n}…`)
+          n++; setBusy(`Validando lado ${n}…`); fontes.push({ file })
           const rel = await analyzeImage(file, opts)
           const prova = await renderProofImage(rel, `#${d.numero} ${d.titulo} · lado ${n}`)
           lados.push({ rel, prova })
@@ -87,8 +87,17 @@ export default function Demanda({ perfil }) {
         ladosRel.push({ nome: nome(i), prova_path, ...rel })
       }
       const ordem = { reprovado: 0, ressalvas: 1, aprovado: 2 }
-      const resultado = ladosRel.reduce((a, l) => ordem[l.resultado] < ordem[a] ? l.resultado : a, 'aprovado')
-      const relatorio = { resultado, lados: ladosRel, arquivos: uploads.map(u => u.path) }
+      let resultado = ladosRel.reduce((a, l) => ordem[l.resultado] < ordem[a] ? l.resultado : a, 'aprovado')
+      let extra = []
+      if (d.candidato) {
+        setBusy('Conferindo CNPJ e tiragem…')
+        const { data: outros } = await supabase.from('gr_candidatos').select('nome, cnpj:cnpj_campanha').neq('id', d.candidato.id)
+        try { const chk = await checarCnpj(fontes, { cand: d.candidato, quantidade: d.quantidade, outros: outros || [] }, setBusy); extra.push(chk) }
+        catch (e) { extra.push({ t: 'CNPJ e tiragem', s: 'warn', msg: 'Não foi possível conferir automaticamente: ' + e.message }) }
+        const mapa = { fail: 'reprovado', warn: 'ressalvas', pass: 'aprovado' }
+        for (const c of extra) if (ordem[mapa[c.s]] < ordem[resultado]) resultado = mapa[c.s]
+      }
+      const relatorio = { resultado, lados: ladosRel, extra, arquivos: uploads.map(u => u.path) }
       await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path: uploads[0].path, prova_path: ladosRel[0].prova_path, relatorio, resultado, enviado_por: perfil?.id })
       await registrar(id, 'validacao', `v${versao} (${ladosRel.length} lado${ladosRel.length > 1 ? 's' : ''}): ${RES_TXT[resultado]}`, perfil?.id)
       const troca = d.etapa !== 'arte'
@@ -217,6 +226,7 @@ export default function Demanda({ perfil }) {
             const L = lados[Math.min(lado, lados.length - 1)]
             return <div className="relatorio">
               <div className={'summary ' + ult.resultado}>v{ult.versao} · {RES_TXT[ult.resultado]}</div>
+              {(ult.relatorio.extra || []).map(c => <div key={c.t} className={'chk ' + c.s}><span className="mark">{ICON[c.s]}</span><div><h3>{c.t}</h3><p>{c.msg}</p></div></div>)}
               {lados.length > 1 && <div className="tabs">{lados.map((l, i) => <button key={i} type="button" className={i === lado ? 'on' : ''} onClick={() => setLado(i)}>{l.nome} <span className={'dot ' + { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[l.resultado]} /></button>)}</div>}
               {L.checks.map(c => <div key={c.t} className={'chk ' + c.s}><span className="mark">{ICON[c.s]}</span><div><h3>{c.t}</h3><p>{c.msg}</p></div></div>)}
               {L.images?.length > 0 && <details><summary>Imagens ({L.images.length})</summary>

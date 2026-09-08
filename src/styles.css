@@ -60,3 +60,9 @@ aside{display:flex;flex-direction:column;gap:16px}
 .linkbox{background:#f6f6f6;border-left:3px solid var(--c);padding:10px 12px;margin-bottom:12px;font-size:14px} .linkbox code{display:block;font-family:inherit;word-break:break-all;margin:4px 0 8px}
 .linkbox.f{border-left-color:var(--y)}
 .obs{background:#fff8dc;border-left:3px solid var(--warn);padding:10px 12px;margin-bottom:12px;font-size:14px}.obs p{margin:4px 0 0}
+.form.wide{max-width:1240px;display:flex;flex-direction:column;gap:16px}
+.chips{margin-bottom:10px} .chips .btn{padding:6px 10px;font-size:14px;text-transform:capitalize}
+.candgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;max-height:60vh;overflow:auto;border:1px solid var(--rule);padding:8px;margin-bottom:12px}
+.candchk{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--rule);cursor:pointer;margin:0;color:var(--ink);font-size:15px} .candchk.on{background:#eef8fd;border-color:var(--c)} .candchk input{width:auto;margin-top:4px}
+.tablewrap{overflow:auto;margin-top:8px} table.rel{border-collapse:collapse;font-size:13px;white-space:nowrap} table.rel th,table.rel td{border:1px solid var(--rule);padding:4px 8px;text-align:left} table.rel th{background:#f0f0f0;position:sticky;top:0}
+@media print{header.top,.row,.muted{display:none!important} .card{border:0;padding:0} table.rel{font-size:11px;white-space:normal}}
