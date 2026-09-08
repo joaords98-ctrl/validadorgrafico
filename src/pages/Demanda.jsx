@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase, ETAPAS, ORIGENS, registrar, dataBR, horaBR } from '../lib/supabase'
-import { openPdf, analyze, renderProof } from '../lib/validator'
+import { openPdf, analyze, renderProof, analyzeImage, renderProofImage } from '../lib/validator'
 
 const ICON = { pass: '✓', warn: '!', fail: '✕' }
 const RES_TXT = { aprovado: 'Aprovado para a gráfica', ressalvas: 'Aprovado com ressalvas', reprovado: 'Reprovado — corrija antes de enviar' }
@@ -36,22 +36,28 @@ export default function Demanda({ perfil }) {
 
   async function upload(file) {
     if (!file) return
-    setBusy('Lendo PDF…')
+    setBusy('Lendo arquivo…')
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer())
-      const docs = await openPdf(bytes)
-      setBusy('Validando…')
-      const rel = await analyze(docs, { targetW: d.largura_mm, targetH: d.altura_mm })
-      setBusy('Gerando prova…')
-      const prova = await renderProof(docs, rel, `#${d.numero} ${d.titulo}`)
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
+      const ext = isPdf ? 'pdf' : /\.png$/i.test(file.name) || file.type === 'image/png' ? 'png' : 'jpg'
+      let rel, prova
+      const opts = { targetW: d.largura_mm, targetH: d.altura_mm }
+      if (isPdf) {
+        const docs = await openPdf(new Uint8Array(await file.arrayBuffer()))
+        setBusy('Validando…'); rel = await analyze(docs, opts)
+        setBusy('Gerando prova…'); prova = await renderProof(docs, rel, `#${d.numero} ${d.titulo}`)
+      } else {
+        setBusy('Validando…'); rel = await analyzeImage(file, opts)
+        setBusy('Gerando prova…'); prova = await renderProofImage(rel, `#${d.numero} ${d.titulo}`)
+      }
       const versao = (arqs[0]?.versao || 0) + 1
       const base = `${id}/v${versao}`
       setBusy('Enviando…')
-      const up1 = await supabase.storage.from('materiais').upload(`${base}.pdf`, file, { contentType: 'application/pdf' })
+      const up1 = await supabase.storage.from('materiais').upload(`${base}.${ext}`, file, { contentType: file.type || 'application/octet-stream' })
       if (up1.error) throw up1.error
       await supabase.storage.from('materiais').upload(`${base}-prova.png`, prova, { contentType: 'image/png' })
       const { _geo, ...relatorio } = rel
-      await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path: `${base}.pdf`, prova_path: `${base}-prova.png`, relatorio, resultado: rel.resultado, enviado_por: perfil?.id })
+      await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path: `${base}.${ext}`, prova_path: `${base}-prova.png`, relatorio, resultado: rel.resultado, enviado_por: perfil?.id })
       await registrar(id, 'validacao', `v${versao}: ${RES_TXT[rel.resultado]}`, perfil?.id)
       // Arquivo OK? → aprovação. Não → continua em arte (ajustes técnicos).
       if (rel.resultado !== 'reprovado') await atualizar({ etapa: 'aprovacao', aprov_coordenacao: false, aprov_candidato: false }, 'etapa', 'Arquivo OK → Aprovação executiva e política')
@@ -124,8 +130,8 @@ export default function Demanda({ perfil }) {
             {d.briefing && <p className="brief">{d.briefing}</p>}
             {ult?.resultado === 'reprovado' && <p className="err">Última versão reprovada na validação técnica. Corrija os itens abaixo e envie de novo.</p>}
             <label className="upload">
-              <input type="file" accept="application/pdf" onChange={e => upload(e.target.files[0])} disabled={!!busy} />
-              <strong>Enviar PDF para validação</strong><br /><span className="muted">Formato, sangria, CMYK, resolução, curvas e margens são conferidos na hora.</span>
+              <input type="file" accept="application/pdf,image/png,image/jpeg" onChange={e => upload(e.target.files[0])} disabled={!!busy} />
+              <strong>Enviar PDF, PNG ou JPEG para validação</strong><br /><span className="muted">PDF: formato, sangria, CMYK, resolução, curvas e margens. Imagem: proporção, sangria, modo de cor e resolução efetiva.</span>
             </label>
             {d.designer_id !== perfil?.id && <button className="link" onClick={() => atualizar({ designer_id: perfil.id }, 'assumida', `${perfil.nome} assumiu a arte`)}>Assumir esta demanda</button>}
           </>}
@@ -173,7 +179,7 @@ export default function Demanda({ perfil }) {
           </section>
           <section className="card">
             <h2>Versões</h2>
-            {arqs.map(a => <div key={a.id} className="ver"><span>v{a.versao}{a.final ? ' · final' : ''} <span className={'dot ' + (a.final ? 'ok' : { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[a.resultado])} /></span><span className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</span><button className="link" onClick={() => baixar(a.path)}>PDF</button></div>)}
+            {arqs.map(a => <div key={a.id} className="ver"><span>v{a.versao}{a.final ? ' · final' : ''} <span className={'dot ' + (a.final ? 'ok' : { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[a.resultado])} /></span><span className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</span><button className="link" onClick={() => baixar(a.path)}>{a.path.split('.').pop().toUpperCase()}</button></div>)}
             {!arqs.length && <p className="muted">Nenhum arquivo ainda.</p>}
           </section>
           <section className="card">

@@ -236,3 +236,114 @@ export async function renderProof(docs, report, label = '') {
   c.fillText(`${label} · corte ${fmt(report.corte.w)} × ${fmt(report.corte.h)} mm · sangria ${fmt(Math.max(0, (outer.w - trim.w) / 2 / (MM * scale)))} mm · prova de tela, cores não calibradas`, pad + 8 * sw + px(3), by + px(0.8))
   return new Promise(r => cv.toBlob(r, 'image/png'))
 }
+
+/* ───────── Imagens (PNG / JPEG) ───────── */
+function imgInfo(bytes) {
+  const b = bytes
+  if (b[0] === 0x89 && b[1] === 0x50) { // PNG
+    const dv = new DataView(b.buffer, b.byteOffset)
+    const w = dv.getUint32(16), h = dv.getUint32(20), ct = b[25]
+    const cs = ct === 0 || ct === 4 ? 'gray' : ct === 3 ? 'indexed' : 'rgb'
+    let dpi = null
+    for (let p = 8; p + 8 < b.length;) { const len = dv.getUint32(p); const type = String.fromCharCode(b[p+4],b[p+5],b[p+6],b[p+7])
+      if (type === 'pHYs') { const ppu = dv.getUint32(p + 8); if (b[p + 16] === 1) dpi = Math.round(ppu * 0.0254); break }
+      if (type === 'IDAT') break; p += 12 + len }
+    return { fmt: 'PNG', w, h, cs, alpha: ct === 4 || ct === 6, dpi }
+  }
+  if (b[0] === 0xFF && b[1] === 0xD8) { // JPEG
+    let p = 2, w = 0, h = 0, comps = 0, adobe = false, transform = null, dpi = null
+    while (p < b.length) {
+      if (b[p] !== 0xFF) { p++; continue }
+      const m = b[p + 1]; if (m === 0xD8 || (m >= 0xD0 && m <= 0xD7) || m === 0x01) { p += 2; continue }
+      const len = (b[p + 2] << 8) | b[p + 3]
+      if (m === 0xE0 && String.fromCharCode(b[p+4],b[p+5],b[p+6],b[p+7]) === 'JFIF') { const u = b[p + 11]; const x = (b[p+12] << 8) | b[p+13]; if (u === 1) dpi = x; if (u === 2) dpi = Math.round(x * 2.54) }
+      if (m === 0xEE && String.fromCharCode(b[p+4],b[p+5],b[p+6],b[p+7],b[p+8]) === 'Adobe') { adobe = true; transform = b[p + 15] }
+      if ((m >= 0xC0 && m <= 0xC3) || (m >= 0xC5 && m <= 0xC7) || (m >= 0xC9 && m <= 0xCB) || (m >= 0xCD && m <= 0xCF)) { h = (b[p+5] << 8) | b[p+6]; w = (b[p+7] << 8) | b[p+8]; comps = b[p + 9]; break }
+      if (m === 0xDA) break
+      p += 2 + len
+    }
+    const cs = comps === 4 ? 'cmyk' : comps === 1 ? 'gray' : 'rgb'
+    return { fmt: 'JPEG', w, h, cs, alpha: false, dpi, adobe, transform }
+  }
+  return null
+}
+
+export async function analyzeImage(file, opts = {}) {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const info = imgInfo(bytes)
+  if (!info) throw new Error('Formato não reconhecido (use PDF, PNG ou JPEG).')
+  const bleedMin = opts.bleedMin ?? 3, safe = opts.safe ?? 3, tw = opts.targetW, th = opts.targetH
+  const checks = []
+  const ratio = info.w / info.h
+  let cutW = null, cutH = null, bleed = 0, assumed = ''
+  if (tw && th) {
+    const rTrim = tw / th, rBleed = (tw + 2 * bleedMin) / (th + 2 * bleedMin)
+    const near = (a, b) => Math.abs(a / b - 1) < 0.01
+    if (near(ratio, rBleed) && !near(ratio, rTrim)) { cutW = tw + 2 * bleedMin; cutH = th + 2 * bleedMin; bleed = bleedMin; assumed = `Proporção bate com ${tw} × ${th} mm + ${bleedMin} mm de sangria por lado.` }
+    else if (near(ratio, rTrim)) { cutW = tw; cutH = th; bleed = 0; assumed = `Proporção bate com ${tw} × ${th} mm exatos (sem sangria).` }
+  }
+  { // formato e sangria
+    let s = 'pass', msg = `${info.fmt} ${info.w} × ${info.h} px · proporção ${ratio.toFixed(3)}`
+    if (!tw || !th) { s = 'warn'; msg += '\nDemanda sem tamanho final cadastrado — não dá para conferir proporção nem sangria.' }
+    else if (cutW == null) { s = 'fail'; msg += `\nProporção não bate com ${tw} × ${th} mm (${(tw/th).toFixed(3)}) nem com tamanho + sangria (${((tw+2*bleedMin)/(th+2*bleedMin)).toFixed(3)}). A gráfica vai esticar ou cortar.` }
+    else if (bleed === 0) { s = 'fail'; msg += `\n${assumed}\nImagem sem sangria: fundo ou foto que encosta na borda gera fio branco no corte. Exporte com ${bleedMin} mm a mais em cada lado (${Math.round((tw+2*bleedMin)/25.4*300)} × ${Math.round((th+2*bleedMin)/25.4*300)} px a 300 dpi).` }
+    else msg += `\n${assumed}\nEm imagem não há marca de corte: avise a gráfica que a sangria é de ${bleedMin} mm.`
+    checks.push({ t: 'Formato e sangria', s, msg })
+  }
+  { // cor
+    let s = 'pass', msg = `Modo de cor: ${info.cs.toUpperCase()}${info.alpha ? ' com transparência' : ''}${info.adobe ? ' (Adobe JPEG)' : ''}`
+    if (info.cs === 'rgb' || info.cs === 'indexed') { s = 'fail'; msg += '\nImagem em RGB: a gráfica vai converter e as cores podem sair diferentes. PNG é sempre RGB — para CMYK exporte JPEG ou PDF pelo Photoshop/Illustrator.' }
+    if (info.alpha) { s = s === 'fail' ? 'fail' : 'warn'; msg += '\nTransparência não existe em impressão: o que for transparente vira branco (ou o fundo da chapa).' }
+    checks.push({ t: 'CMYK (imagens e vetores)', s, msg })
+  }
+  { // resolução
+    let s = 'pass', msg
+    if (cutW) {
+      const dpi = Math.min(info.w / (cutW / 25.4), info.h / (cutH / 25.4))
+      msg = `${Math.round(dpi)} dpi efetivos no tamanho de ${cutW} × ${cutH} mm`
+      if (info.dpi && Math.abs(info.dpi - dpi) > 20) msg += ` (o arquivo diz ${info.dpi} dpi, mas o que vale é o tamanho impresso)`
+      if (dpi < 200) { s = 'fail'; msg += `\nVai sair pixelada. Mínimo para esse tamanho: ${Math.round(cutW/25.4*300)} × ${Math.round(cutH/25.4*300)} px.` }
+      else if (dpi < 300) { s = 'warn'; msg += '\nEntre 200 e 300 dpi: aceitável em cartaz visto de longe, ruim em peça de mão.' }
+    } else if (tw && th) {
+      const dpi = Math.min(info.w / (tw / 25.4), info.h / (th / 25.4)); msg = `~${Math.round(dpi)} dpi se impressa em ${tw} × ${th} mm`; s = dpi < 200 ? 'fail' : dpi < 300 ? 'warn' : 'pass'
+    } else { s = 'warn'; msg = info.dpi ? `Arquivo declara ${info.dpi} dpi; sem tamanho final não dá para calcular a resolução real.` : 'Sem tamanho final não dá para calcular a resolução real.' }
+    checks.push({ t: 'Resolução (300 dpi mín.)', s, msg })
+  }
+  checks.push({ t: 'Textos em curvas', s: 'warn', msg: 'Arquivo de imagem: todo o texto já está rasterizado. Bordas de letras pequenas podem sair serrilhadas — confira na prova em 100%.' })
+  checks.push({ t: 'Margens de segurança', s: 'warn', msg: `Não dá para medir automaticamente em imagem. Confira na prova se textos e logos estão dentro da linha verde (${safe} mm do corte).` })
+  const order = { fail: 0, warn: 1, pass: 2 }
+  const worst = checks.reduce((a, c) => order[c.s] < order[a] ? c.s : a, 'pass')
+  const resultado = worst === 'pass' ? 'aprovado' : worst === 'warn' ? 'ressalvas' : 'reprovado'
+  return { resultado, checks, images: [], corte: { w: cutW ? cutW - 2 * bleed : (tw || null), h: cutH ? cutH - 2 * bleed : (th || null) }, pagina: 1, paginas: 1, tipo: 'imagem',
+    _geo: { file, info, cutW, cutH, bleed, safe } }
+}
+
+export async function renderProofImage(report, label = '') {
+  const g = report._geo
+  const bmp = await createImageBitmap(g.file)
+  const maxSide = 1600, sc = Math.min(1, maxSide / Math.max(bmp.width, bmp.height))
+  const iw = Math.round(bmp.width * sc), ih = Math.round(bmp.height * sc)
+  const pxmm = g.cutW ? iw / g.cutW : iw / 100 // px por mm
+  const px = v => v * pxmm
+  const pad = px(14)
+  const cv = document.createElement('canvas'); cv.width = Math.round(iw + 2 * pad); cv.height = Math.round(ih + 2 * pad + px(12))
+  const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height)
+  c.drawImage(bmp, pad, pad, iw, ih)
+  const outer = { x: pad, y: pad, w: iw, h: ih }
+  const bl = px(g.bleed)
+  const trim = { x: pad + bl, y: pad + bl, w: iw - 2 * bl, h: ih - 2 * bl }
+  if (g.bleed) { c.save(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.rect(outer.x, outer.y, outer.w, outer.h); c.rect(trim.x, trim.y, trim.w, trim.h); c.fill('evenodd'); c.restore() }
+  c.lineWidth = Math.max(1, px(0.15))
+  c.strokeStyle = '#d6002a'; c.strokeRect(outer.x, outer.y, outer.w, outer.h)
+  const sm = px(g.safe); c.setLineDash([px(1.2), px(0.8)]); c.strokeStyle = '#1e8e3e'; c.strokeRect(trim.x + sm, trim.y + sm, trim.w - 2 * sm, trim.h - 2 * sm); c.setLineDash([])
+  c.strokeStyle = '#161616'; c.strokeRect(trim.x, trim.y, trim.w, trim.h)
+  const off = Math.max(bl, px(3)) + px(1.5), len = px(5)
+  const mark = (x, y, dx, dy) => { c.beginPath(); c.moveTo(x + dx * off, y); c.lineTo(x + dx * (off + len), y); c.moveTo(x, y + dy * off); c.lineTo(x, y + dy * (off + len)); c.stroke() }
+  mark(trim.x, trim.y, -1, -1); mark(trim.x + trim.w, trim.y, 1, -1); mark(trim.x, trim.y + trim.h, -1, 1); mark(trim.x + trim.w, trim.y + trim.h, 1, 1)
+  const by = cv.height - px(10), sw = px(6)
+  ;['#00a3e0','#e5007d','#ffd500','#161616','#7fd1ef','#f27fbd','#ffea7f','#8a8a8a'].forEach((k, i) => { c.fillStyle = k; c.fillRect(pad + i * sw, by, sw, px(5)) })
+  c.fillStyle = '#161616'; c.font = `${Math.round(px(3.2))}px sans-serif`; c.textBaseline = 'top'
+  const corte = report.corte.w ? `corte ${fmt(report.corte.w)} × ${fmt(report.corte.h)} mm · sangria ${g.bleed} mm` : 'tamanho final não informado'
+  c.fillText(`${label} · ${g.info.fmt} ${g.info.w}×${g.info.h} px · ${corte} · prova de tela, cores não calibradas`, pad + 8 * sw + px(3), by + px(0.8))
+  return new Promise(r => cv.toBlob(r, 'image/png'))
+}
