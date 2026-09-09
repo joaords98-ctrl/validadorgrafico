@@ -6,7 +6,13 @@ export default function Login({ onEntrar, liberado, onSenha }) {
   const [lista, setLista] = useState([])
   const [nome, setNome] = useState('')
   const [erro, setErro] = useState('')
-  useEffect(() => { if (liberado) supabase.from('gr_perfis').select('id,nome,papel').order('nome').then(({ data }) => setLista(data || [])) }, [])
+  useEffect(() => { if (liberado) supabase.from('gr_perfis').select('id,nome,papel').order('nome').then(({ data }) => setLista(data || [])) }, [liberado])
+  async function checar(e) {
+    e.preventDefault(); setErroSenha('')
+    const { data, error } = await supabase.rpc('gr_checar_senha', { s: senha })
+    if (error) return setErroSenha('Erro ao verificar: ' + error.message)
+    if (data) onSenha(senha, data); else setErroSenha('Senha incorreta.')
+  }
   async function entrar(e) {
     e.preventDefault(); setErro('')
     const n = nome.trim(); if (!n) return
