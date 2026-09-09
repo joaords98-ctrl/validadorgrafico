@@ -22,11 +22,14 @@ export default function App() {
     if (!configOk) return
     const s = localStorage.getItem(SKEY)
     if (!s) { setLiberado(false); return }
-    supabase.rpc('gr_checar_senha', { s }).then(({ data }) => { if (!data) localStorage.removeItem(SKEY); setLiberado(data || false) })
+    let done = false
+    const fim = v => { if (done) return; done = true; if (!v) localStorage.removeItem(SKEY); setLiberado(v || false) }
+    supabase.rpc('gr_checar_senha', { s }).then(({ data, error }) => fim(error ? false : data)).catch(() => fim(false))
+    setTimeout(() => fim(false), 8000)
   }, [])
   if (!configOk) return <main className="login"><div className="card"><h1>Configuração faltando</h1><p>As variáveis <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code> não estão definidas. No Vercel: Settings → Environment Variables → adicione as duas e faça <strong>Redeploy</strong>.</p></div></main>
   if (loc.pathname.startsWith('/a/') || loc.pathname.startsWith('/c/')) return <Routes><Route path="/a/:token" element={<Aprovar modo="candidato" />} /><Route path="/c/:token" element={<Aprovar modo="coordenacao" />} /></Routes>
-  if (liberado === undefined) return null
+  if (liberado === undefined) return <main className="login"><p>Carregando…</p></main>
   const sairTudo = () => { localStorage.removeItem(KEY); localStorage.removeItem(SKEY); setPerfil(null); setLiberado(false) }
   if (liberado === 'partido' || liberado === 'grafica') return <>
     <header className="top"><span className="brand"><img src="/missao.png" alt="Missão" /><span>Validador Gráfico<small>{liberado === 'partido' ? 'Aprovações do partido' : 'Área da gráfica'}</small></span></span><nav><button className="link" onClick={sairTudo}>sair</button></nav></header>
