@@ -66,3 +66,6 @@ aside{display:flex;flex-direction:column;gap:16px}
 .candchk{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--rule);cursor:pointer;margin:0;color:var(--ink);font-size:15px} .candchk.on{background:#eef8fd;border-color:var(--c)} .candchk input{width:auto;margin-top:4px}
 .tablewrap{overflow:auto;margin-top:8px} table.rel{border-collapse:collapse;font-size:13px;white-space:nowrap} table.rel th,table.rel td{border:1px solid var(--rule);padding:4px 8px;text-align:left} table.rel th{background:#f0f0f0;position:sticky;top:0}
 @media print{header.top,.row,.muted{display:none!important} .card{border:0;padding:0} table.rel{font-size:11px;white-space:normal}}
+.pcard{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;color:var(--ink)} .pcard img{width:120px;border:1px solid var(--rule)} .pcard:hover{border-color:var(--amarelo)}
+.sec{margin:8px 0 0} .gcard h2{font-size:20px;margin:4px 0} .cnpjline{background:#fff8dc;border-left:4px solid var(--amarelo);padding:8px 10px;font-weight:700;font-size:14px}
+@media(max-width:600px){.pcard{grid-template-columns:1fr} .pcard img{width:100%}}

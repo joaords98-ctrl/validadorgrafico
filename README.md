@@ -11,6 +11,17 @@ As tabelas têm prefixo `gr_` para conviver com os outros apps no mesmo projeto.
 3. Rode também `supabase/migrations/0002_sem_login.sql` (libera acesso sem login).
 4. Project Settings → API: copie a URL e a `anon` key.
 
+### Senha do painel
+Três senhas, cada uma abre uma área diferente:
+| Senha (padrão) | Chave em `gr_config` | Abre |
+|---|---|---|
+| `missao2026` | `senha_painel` | painel completo da equipe |
+| `partido2026` | `senha_partido` | lista de materiais para aprovar |
+| `grafica2026` | `senha_grafica` | arquivos finais para download, com recebimento/entrega |
+
+Para trocar: `update gr_config set valor = 'nova' where chave = 'senha_partido';`
+Quem já estava logado precisa digitar a nova. Os links de aprovação (`/a/...` e `/c/...`) não pedem senha.
+
 ## 2. Rodar local (macOS)
 ```bash
 cp .env.example .env      # preencha com URL e anon key
