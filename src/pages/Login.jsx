@@ -35,9 +35,9 @@ export default function Login({ onEntrar, liberado, onSenha }) {
     <main className="login">
       <form onSubmit={entrar} className="card">
         <img className="logo" src="/missao.png" alt="Missão" /><h1>Validador Gráfico</h1>
-        <p className="muted">Quem está usando? O nome fica registrado no histórico de cada demanda.</p>
+        <p className="muted">Quem está usando?</p>
         {lista.length > 0 && <div className="nomes">{lista.map(p => <button type="button" key={p.id} className="btn ghost" onClick={() => onEntrar(p)}>{p.nome}</button>)}</div>}
-        <label>Ou digite um nome novo<input value={nome} onChange={e => setNome(e.target.value)} placeholder="ex. Murilo" autoFocus /></label>
+        <details className="outro"><summary>Outro nome</summary><label><input value={nome} onChange={e => setNome(e.target.value)} placeholder="digite o nome" /></label></details>
         {erro && <p className="err">{erro}</p>}
         <button className="btn" type="submit">Entrar</button>
       </form>

@@ -69,3 +69,5 @@ aside{display:flex;flex-direction:column;gap:16px}
 .pcard{display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:center;color:var(--ink)} .pcard img{width:120px;border:1px solid var(--rule)} .pcard:hover{border-color:var(--amarelo)}
 .sec{margin:8px 0 0} .gcard h2{font-size:20px;margin:4px 0} .cnpjline{background:#fff8dc;border-left:4px solid var(--amarelo);padding:8px 10px;font-weight:700;font-size:14px}
 @media(max-width:600px){.pcard{grid-template-columns:1fr} .pcard img{width:100%}}
+.nomes .btn{font-size:18px;padding:12px 18px;flex:1 1 40%}
+.outro{margin:6px 0 10px;text-align:left;font-size:14px;color:var(--ink2)} .outro summary{cursor:pointer}

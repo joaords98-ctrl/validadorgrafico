@@ -11,7 +11,6 @@ export const ETAPAS = [
   ['concluida', 'Concluídas'],
 ]
 export const ORIGENS = { candidato: 'Candidato', partido: 'Partido', flavio: 'Coordenação' }
-export const PECAS = ['Santinho', 'Adesivo', 'Cartaz', 'Banner', 'Panfleto', 'Flyer', 'Faixa', 'Outro']
 
 export async function registrar(demanda_id, tipo, detalhe, por) {
   await supabase.from('gr_eventos').insert({ demanda_id, tipo, detalhe, por })

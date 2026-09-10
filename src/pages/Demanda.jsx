@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase, ETAPAS, ORIGENS, registrar, dataBR, horaBR } from '../lib/supabase'
 import { openPdf, analyze, renderProof, analyzeImage, renderProofImage, checarCnpj } from '../lib/validator'
+import { MOLDES } from '../lib/catalogo'
 
 const ICON = { pass: '✓', warn: '!', fail: '✕' }
 
@@ -51,7 +52,7 @@ export default function Demanda({ perfil }) {
     files = [...(files || [])]; if (!files.length) return
     setBusy('Lendo arquivo…')
     try {
-      const opts = { targetW: d.largura_mm, targetH: d.altura_mm }
+      const opts = { targetW: d.largura_mm, targetH: d.altura_mm, forma: d.forma, molde: d.molde }
       const versao = (arqs[0]?.versao || 0) + 1
       const base = `${id}/v${versao}`
       const lados = []; const uploads = []; const fontes = []
@@ -148,7 +149,7 @@ export default function Demanda({ perfil }) {
         <div>
           <div className="num">#{d.numero} · {ORIGENS[d.origem]}{d.candidato ? ' · ' + d.candidato.nome : ''}</div>
           <h1>{d.titulo}</h1>
-          <p className="muted">{d.peca} · {d.largura_mm && `${d.largura_mm} × ${d.altura_mm} mm`}{d.quantidade && ` · ${d.quantidade} un.`} · prazo {dataBR(d.prazo)}{d.designer && ` · designer: ${d.designer.nome}`}</p>
+          <p className="muted">{d.peca}{d.material && ` · ${d.material}`} · {d.largura_mm && `${d.largura_mm} × ${d.altura_mm} mm`}{d.forma === 'redondo' && ' (redondo)'}{d.quantidade && ` · ${d.quantidade} un.`} · prazo {dataBR(d.prazo)}{d.designer && ` · designer: ${d.designer.nome}`}</p>
         </div>
         <ol className="steps">{ETAPAS.map(([k, n], i) => <li key={k} className={i < etapaIdx ? 'done' : i === etapaIdx ? 'now' : ''}>{n}</li>)}</ol>
       </div>
@@ -167,6 +168,7 @@ export default function Demanda({ perfil }) {
             <button className="btn" onClick={() => atualizar({ etapa: 'arte', designer_id: perfil.id }, 'assumida', `${perfil.nome} assumiu a arte`)}>Assumir a arte</button>
           </>}
 
+          {d.molde && MOLDES[d.molde] && <div className="linkbox"><strong>Molde: {MOLDES[d.molde].nome}</strong><p className="muted">{MOLDES[d.molde].dica}</p><a className="btn ghost" href={MOLDES[d.molde].arquivo} download>Baixar molde (PDF)</a></div>}
           {d.etapa === 'arte' && <>
             {d.briefing && <p className="brief">{d.briefing}</p>}
             {ult?.resultado === 'reprovado' && <p className="err">Última versão reprovada na validação técnica. Corrija os itens abaixo e envie de novo.</p>}

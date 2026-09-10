@@ -3,6 +3,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import * as PDFLib from 'pdf-lib'
+import { MOLDES } from './catalogo'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -10,7 +11,8 @@ const MM = 72 / 25.4
 const mm = v => v / MM
 const fmt = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR')
 
-export const STD = [['Santinho 10×7',100,70],['Santinho 7×10',70,100],['Cartão 9×5',90,50],['Adesivo 10×10',100,100],['Adesivo 5×5',50,50],['A6',105,148],['Flyer 10×15',100,150],['A5',148,210],['Panfleto 14×20',140,200],['Filipeta 10×21',100,210],['A4',210,297],['A3',297,420],['Cartaz 30×42',300,420],['Cartaz 42×60',420,600],['Cartaz 46×64',460,640],['Banner 60×90',600,900],['Banner 80×120',800,1200],['Banner 90×120',900,1200]]
+import { PRODUTOS } from './catalogo'
+export const STD = [...PRODUTOS.map(p => [p.nome, p.w, p.h]), ['A4',210,297], ['A3',297,420], ['Cartaz 42×60',420,600], ['Banner 80×120',800,1200]]
 
 export async function openPdf(bytes) {
   const pjDoc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise
@@ -149,7 +151,22 @@ export async function analyze(docs, opts = {}) {
 
   const M = dims(media), T = trimBox ? dims(trimBox) : null
   const checks = []
-  { // 1 formato e sangria
+  if (opts.molde && MOLDES[opts.molde]) { // molde especial: página tem que ser o tamanho do molde
+    const mo = MOLDES[opts.molde]; let s = 'pass'
+    const ok = Math.abs(M.w - mo.w) <= 2 && Math.abs(M.h - mo.h) <= 2
+    let msg = `Página: ${fmt(M.w)} × ${fmt(M.h)} mm · molde ${mo.nome}: ${mo.w} × ${mo.h} mm`
+    if (!ok) { s = 'fail'; msg += `\nA página não tem o tamanho do molde. Use o molde como base do arquivo (baixe na demanda) e exporte no mesmo tamanho, sem marcas de corte.` }
+    else msg += `\n${mo.dica}`
+    checks.push({ t: 'Formato (molde)', s, msg })
+  } else if (opts.forma === 'redondo' && tw) { // redondo: quadrado + sangria
+    let s = 'pass'; const diam = tw; const g = (M.w - diam) / 2, gh = (M.h - diam) / 2
+    let msg = `Página: ${fmt(M.w)} × ${fmt(M.h)} mm · adesivo redondo Ø ${diam} mm`
+    if (Math.abs(M.w - M.h) > 0.6) { s = 'fail'; msg += '\nA página tem que ser quadrada (diâmetro + sangria de cada lado).' }
+    else if (g < 0.5) { s = 'fail'; msg += `\nSem sangria: o fundo precisa passar ${bleedMin} mm além do círculo. Página ideal: ${diam + 2 * bleedMin} × ${diam + 2 * bleedMin} mm.` }
+    else if (g < bleedMin) { s = 'warn'; msg += `\nSangria de ${fmt(g)} mm, abaixo de ${bleedMin} mm.` }
+    else msg += `\nSangria de ${fmt(g)} mm ao redor do círculo. A linha de corte é o círculo — nada importante a menos de ${safe} mm dele.`
+    checks.push({ t: 'Formato e sangria (redondo)', s, msg })
+  } else { // 1 formato e sangria
     let s = 'pass', msg = ''
     const outer = bleedBox || media
     const bleedPer = trimBox ? Math.min(mm(trimBox.x - outer.x), mm(outer.x + outer.w - trimBox.x - trimBox.w), mm(trimBox.y - outer.y), mm(outer.y + outer.h - trimBox.y - trimBox.h)) : null
@@ -208,7 +225,8 @@ export async function analyze(docs, opts = {}) {
   }
   { // 5 margem
     let s = 'pass', msg
-    if (!textItems) msg = 'Sem texto vivo para conferir — confira na prova.'
+    if (opts.molde || opts.forma === 'redondo') { s = textItems ? 'warn' : 'pass'; msg = 'Corte especial: confira na prova se textos e logos estão dentro da área verde.' }
+    else if (!textItems) msg = 'Sem texto vivo para conferir — confira na prova.'
     else if (!near.length) msg = `Todo o texto está a mais de ${fmt(safe)} mm do corte.`
     else { s = 'fail'; msg = `${near.length} bloco(s) a menos de ${fmt(safe)} mm do corte:\n` + near.slice(0, 5).map(n => `• "${n.str}" (${fmt(Math.max(n.d, 0))} mm${n.d < 0 ? ', fora do corte' : ''})`).join('\n') }
     checks.push({ t: 'Margens de segurança', s, msg })
@@ -217,7 +235,7 @@ export async function analyze(docs, opts = {}) {
   const worst = checks.reduce((a, c) => order[c.s] < order[a] ? c.s : a, 'pass')
   const resultado = worst === 'pass' ? 'aprovado' : worst === 'warn' ? 'ressalvas' : 'reprovado'
   return { resultado, checks, images: dpiList.sort((a, b) => a.dpi - b.dpi), corte: T || M, pagina: pi + 1, paginas: pjDoc.numPages,
-    _geo: { media, trimBox, bleedBox: bleedBox || (synth ? { x: synth.x - synthBleed * MM, y: synth.y - synthBleed * MM, w: synth.w + 2 * synthBleed * MM, h: synth.h + 2 * synthBleed * MM } : null), trimEff, safe, rot } }
+    _geo: { molde: opts.molde, forma: opts.forma, diam: opts.forma === 'redondo' ? tw : null, media, trimBox, bleedBox: bleedBox || (synth ? { x: synth.x - synthBleed * MM, y: synth.y - synthBleed * MM, w: synth.w + 2 * synthBleed * MM, h: synth.h + 2 * synthBleed * MM } : null), trimEff, safe, rot } }
 }
 
 /** Renderiza a prova com marcas e devolve um Blob PNG. */
@@ -236,6 +254,26 @@ export async function renderProof(docs, report, label = '') {
   const rect = b => { const p1 = vp.convertToViewportPoint(b.x, b.y), p2 = vp.convertToViewportPoint(b.x + b.w, b.y + b.h)
     return { x: Math.min(p1[0], p2[0]) + pad, y: Math.min(p1[1], p2[1]) + pad, w: Math.abs(p2[0] - p1[0]), h: Math.abs(p2[1] - p1[1]) } }
   const media = rect(g.media), trim = rect(g.trimEff), outer = rect(g.bleedBox || g.media)
+  const P = (xmm, ymm) => { const p = vp.convertToViewportPoint(g.media.x + xmm * MM, g.media.y + ymm * MM); return [p[0] + pad, p[1] + pad] }
+  const tracar = d => { // path em mm (M L C Z) → canvas
+    const tk = d.trim().split(/\s+/); c.beginPath(); let i = 0
+    while (i < tk.length) { const op = tk[i++]
+      if (op === 'M') { const [x, y] = P(+tk[i++], +tk[i++]); c.moveTo(x, y) }
+      else if (op === 'L') { const [x, y] = P(+tk[i++], +tk[i++]); c.lineTo(x, y) }
+      else if (op === 'C') { const a = P(+tk[i++], +tk[i++]), b = P(+tk[i++], +tk[i++]), e = P(+tk[i++], +tk[i++]); c.bezierCurveTo(a[0], a[1], b[0], b[1], e[0], e[1]) }
+      else if (op === 'Z') c.closePath() } }
+  if (g.molde && MOLDES[g.molde]) {
+    const mo = MOLDES[g.molde]
+    c.save(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.rect(media.x, media.y, media.w, media.h); tracar(mo.corte); c.fill('evenodd'); c.restore()
+    c.lineWidth = Math.max(1, px(0.4)); c.strokeStyle = '#161616'; tracar(mo.corte); c.stroke()
+    c.setLineDash([px(4), px(2)]); c.strokeStyle = '#1e8e3e'; tracar(mo.seguro); c.stroke(); c.setLineDash([])
+  } else if (g.forma === 'redondo' && g.diam) {
+    const cx = (media.x + media.w / 2), cy = (media.y + media.h / 2), r = px(g.diam / 2)
+    c.save(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.rect(media.x, media.y, media.w, media.h); c.arc(cx, cy, r, 0, Math.PI * 2, true); c.fill('evenodd'); c.restore()
+    c.lineWidth = Math.max(1, px(0.15)); c.strokeStyle = '#d6002a'; c.strokeRect(media.x, media.y, media.w, media.h)
+    c.strokeStyle = '#161616'; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke()
+    c.setLineDash([px(1.2), px(0.8)]); c.strokeStyle = '#1e8e3e'; c.beginPath(); c.arc(cx, cy, r - px(g.safe), 0, Math.PI * 2); c.stroke(); c.setLineDash([])
+  } else {
   c.save(); c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.rect(media.x, media.y, media.w, media.h); c.rect(trim.x, trim.y, trim.w, trim.h); c.fill('evenodd'); c.restore()
   c.lineWidth = Math.max(1, px(0.15))
   c.strokeStyle = '#d6002a'; c.strokeRect(outer.x, outer.y, outer.w, outer.h)
@@ -244,6 +282,7 @@ export async function renderProof(docs, report, label = '') {
   const off = Math.max(outer.x < trim.x ? trim.x - outer.x : 0, px(3)) + px(1.5), len = px(5)
   const mark = (x, y, dx, dy) => { c.beginPath(); c.moveTo(x + dx * off, y); c.lineTo(x + dx * (off + len), y); c.moveTo(x, y + dy * off); c.lineTo(x, y + dy * (off + len)); c.stroke() }
   mark(trim.x, trim.y, -1, -1); mark(trim.x + trim.w, trim.y, 1, -1); mark(trim.x, trim.y + trim.h, -1, 1); mark(trim.x + trim.w, trim.y + trim.h, 1, 1)
+  }
   const by = cv.height - px(10), sw = px(6)
   ;['#00a3e0','#e5007d','#ffd500','#161616','#7fd1ef','#f27fbd','#ffea7f','#8a8a8a'].forEach((k, i) => { c.fillStyle = k; c.fillRect(pad + i * sw, by, sw, px(5)) })
   c.fillStyle = '#161616'; c.font = `${Math.round(px(3.2))}px sans-serif`; c.textBaseline = 'top'
