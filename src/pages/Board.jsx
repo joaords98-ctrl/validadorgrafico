@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase, ETAPAS, dataBR } from '../lib/supabase'
+import { supabase, ETAPAS, ETAPAS_GRAFICA, dataBR } from '../lib/supabase'
 
 const RES = { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }
 
@@ -9,7 +9,7 @@ export default function Board() {
   const [busca, setBusca] = useState('')
   useEffect(() => {
     supabase.from('gr_demandas')
-      .select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(resultado, versao)')
+      .select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(resultado, versao), gr_eventos(tipo, em)')
       .order('prazo', { ascending: true, nullsFirst: false })
       .then(({ data }) => setItens(data || []))
   }, [])
@@ -40,6 +40,7 @@ export default function Board() {
                       {d.designer && <span> · {d.designer.nome}</span>}
                       {ult && <span className={'dot ' + RES[ult.resultado]} title={'v' + ult.versao + ' ' + ult.resultado} />}
                     </div>
+                    {key === 'concluida' && (() => { const f = ETAPAS_GRAFICA.filter(([t]) => (d.gr_eventos || []).some(e => e.tipo === t)); const u = f[f.length - 1]; return <div className="meta gstat">{u ? `gráfica: ${u[1].toLowerCase()}` : 'gráfica: aguardando recebimento'}</div> })()}
                     {key === 'aprovacao' && <div className="meta">{d.aprov_coordenacao ? '✓' : '○'} Partido &nbsp; {d.aprov_candidato ? '✓' : '○'} candidato</div>}
                   </Link>
                 )

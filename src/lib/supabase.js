@@ -10,6 +10,13 @@ export const ETAPAS = [
   ['fechamento', 'Envio para produção'],
   ['concluida', 'Concluídas'],
 ]
+export const ETAPAS_GRAFICA = [
+  ['grafica_recebeu', 'Arquivo recebido', 'confirmou recebimento do arquivo'],
+  ['grafica_producao', 'Em produção', 'iniciou a produção'],
+  ['grafica_expedicao', 'Expedição', 'material pronto, em expedição'],
+  ['grafica_transporte', 'Em transporte', 'material saiu para entrega'],
+  ['grafica_entregou', 'Entregue', 'material entregue'],
+]
 export const ORIGENS = { candidato: 'Candidato', partido: 'Partido', flavio: 'Coordenação' }
 
 export async function registrar(demanda_id, tipo, detalhe, por) {

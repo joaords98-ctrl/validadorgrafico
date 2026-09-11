@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase, ETAPAS, dataBR } from '../lib/supabase'
+import { supabase, ETAPAS, ETAPAS_GRAFICA, dataBR } from '../lib/supabase'
 
 function comQuem(d) {
   switch (d.etapa) {
@@ -10,7 +10,7 @@ function comQuem(d) {
       return f.length ? `aguardando ${f.join(' e ')}` : 'aprovado — liberando'
     }
     case 'fechamento': return `${d.designer?.nome || 'equipe'} — fechando arquivo p/ gráfica`
-    case 'concluida': return `gráfica${d.grafica ? ' (' + d.grafica + ')' : ''} — enviado ${dataBR(d.enviado_grafica_em)}`
+    case 'concluida': { const f = ETAPAS_GRAFICA.filter(([t]) => (d.gr_eventos || []).some(e => e.tipo === t)); const u = f[f.length - 1]; return `gráfica${d.grafica ? ' (' + d.grafica + ')' : ''} — ${u ? u[1].toLowerCase() : 'enviado ' + dataBR(d.enviado_grafica_em) + ', aguardando recebimento'}` }
     default: return ''
   }
 }
@@ -20,7 +20,7 @@ export default function Partido() {
   const [provas, setProvas] = useState({})
   const [busca, setBusca] = useState('')
   useEffect(() => {
-    supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,prova_path,resultado)')
+    supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,prova_path,resultado), gr_eventos(tipo)')
       .order('prazo', { ascending: true, nullsFirst: false }).then(async ({ data }) => {
         const lista = data || []; setItens(lista)
         const p = {}

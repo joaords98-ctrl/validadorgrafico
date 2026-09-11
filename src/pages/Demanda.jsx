@@ -269,7 +269,7 @@ export default function Demanda({ perfil }) {
               <button className="btn" onClick={async () => { const p = { ...edit, largura_mm: edit.largura_mm || null, altura_mm: edit.altura_mm || null, quantidade: edit.quantidade || null, prazo: edit.prazo || null, material: edit.material || null, contratante_id: edit.contratante_id || null, briefing: edit.briefing || null }; await atualizar(p, 'editada', `${perfil.nome} editou os dados da demanda`); setEdit(null) }}>Salvar</button>
             </> : <p className="muted">Contratante: {(d.contratante || d.candidato)?.nome || '—'}{d.material && ` · ${d.material}`}{d.briefing && <><br />{d.briefing}</>}</p>}
           </section>
-          {d.etapa !== 'concluida' && <button className="link danger" onClick={async () => { if (confirm('Excluir esta demanda e todos os arquivos?')) { await supabase.from('gr_demandas').delete().eq('id', id); nav('/') } }}>Excluir demanda</button>}
+          {<button className="link danger" onClick={async () => { if (confirm('Excluir esta demanda e todos os arquivos?')) { await supabase.from('gr_demandas').delete().eq('id', id); nav('/') } }}>Excluir demanda</button>}
         </aside>
       </div>
     </main>
