@@ -7,7 +7,7 @@ export default function Relatorio() {
   const [so, setSo] = useState('concluida')
   const [de, setDe] = useState(''), [ate, setAte] = useState('')
   useEffect(() => {
-    supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,nome_completo,cargo,numero,cnpj_campanha,cnpj_grafica), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,resultado)')
+    supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,nome_completo,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,resultado)')
       .order('enviado_grafica_em', { ascending: false, nullsFirst: false }).then(({ data }) => setItens(data || []))
   }, [])
   const etapaNome = Object.fromEntries(ETAPAS)
@@ -15,8 +15,8 @@ export default function Relatorio() {
   const totalUn = lista.reduce((a, d) => a + (d.quantidade || 0), 0)
   const versaoFinal = d => { const a = [...(d.gr_arquivos || [])].sort((x, y) => y.versao - x.versao); return (a.find(x => x.final) || a[0])?.versao }
 
-  const cols = ['Nº', 'Candidato', 'Cargo', 'Número', 'Peça', 'Tamanho (mm)', 'Quantidade', 'Etapa', 'Designer', 'Gráfica', 'Enviado em', 'Versão', 'CNPJ campanha', 'CNPJ gráfica', 'Prazo']
-  const linha = d => [d.numero, d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação'), d.candidato?.cargo || '', d.candidato?.numero || '', d.peca, d.largura_mm ? `${d.largura_mm}×${d.altura_mm}` : '', d.quantidade || '', etapaNome[d.etapa], d.designer?.nome || '', d.grafica || '', d.enviado_grafica_em ? horaBR(d.enviado_grafica_em) : '', versaoFinal(d) ? 'v' + versaoFinal(d) : '', d.candidato?.cnpj_campanha || '', d.candidato?.cnpj_grafica || '', d.prazo ? dataBR(d.prazo) : '']
+  const cols = ['Nº', 'Candidato', 'Cargo', 'Número', 'Peça', 'Tamanho (mm)', 'Quantidade', 'Etapa', 'Designer', 'Gráfica', 'Enviado em', 'Versão', 'Contratante', 'CNPJ contratante', 'CNPJ gráfica', 'Prazo']
+  const linha = d => [d.numero, d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação'), d.candidato?.cargo || '', d.candidato?.numero || '', d.peca, d.largura_mm ? `${d.largura_mm}×${d.altura_mm}` : '', d.quantidade || '', etapaNome[d.etapa], d.designer?.nome || '', d.grafica || '', d.enviado_grafica_em ? horaBR(d.enviado_grafica_em) : '', versaoFinal(d) ? 'v' + versaoFinal(d) : '', (d.contratante || d.candidato)?.nome || '', (d.contratante || d.candidato)?.cnpj_campanha || '', (d.contratante || d.candidato)?.cnpj_grafica || '', d.prazo ? dataBR(d.prazo) : '']
 
   function csv() {
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`

@@ -5,7 +5,7 @@ export default function Grafica() {
   const [itens, setItens] = useState([])
   const [evs, setEvs] = useState({})
   async function carregar() {
-    const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,cargo,numero,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,path,relatorio,criado_em)')
+    const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,path,relatorio,criado_em)')
       .in('etapa', ['fechamento', 'concluida']).order('enviado_grafica_em', { ascending: false, nullsFirst: true })
     setItens(data || [])
     const { data: e } = await supabase.from('gr_eventos').select('demanda_id,tipo,em').in('tipo', ['grafica_recebeu', 'grafica_entregou'])
@@ -17,7 +17,7 @@ export default function Grafica() {
   const arquivoFinal = d => { const a = [...d.gr_arquivos].sort((x, y) => y.versao - x.versao); return a.find(x => x.final) || a[0] }
   return <main className="form wide">
     <div className="card"><h1>Gráfica — arquivos para produção</h1><p className="muted">{itens.length} material{itens.length !== 1 ? 'is' : ''}. Baixe o arquivo final e marque o recebimento e a entrega.</p></div>
-    {itens.map(d => { const a = arquivoFinal(d); const e = evs[d.id] || {}; const rodape = d.candidato?.cnpj_campanha ? `CNPJ CONTRATANTE ${d.candidato.cnpj_campanha}${d.candidato.cnpj_grafica ? ` • CNPJ GRÁFICA ${d.candidato.cnpj_grafica}` : ''}${d.quantidade ? ` • TIRAGEM ${d.quantidade} UN.` : ''}` : null
+    {itens.map(d => { const a = arquivoFinal(d); const e = evs[d.id] || {}; const ct = d.contratante || d.candidato; const rodape = ct?.cnpj_campanha ? `CNPJ CONTRATANTE ${ct.cnpj_campanha}${ct.cnpj_grafica ? ` • CNPJ GRÁFICA ${ct.cnpj_grafica}` : ''}${d.quantidade ? ` • TIRAGEM ${d.quantidade} UN.` : ''}` : null
       return <div className="card gcard" key={d.id}>
         <div className="num">#{d.numero} · {d.peca}{d.largura_mm ? ` ${d.largura_mm} × ${d.altura_mm} mm` : ''} · <b>{d.quantidade ? d.quantidade.toLocaleString('pt-BR') + ' un.' : 'quantidade a confirmar'}</b>{d.prazo ? ` · prazo ${dataBR(d.prazo)}` : ''}</div>
         <h2>{d.titulo}</h2>

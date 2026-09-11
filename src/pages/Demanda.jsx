@@ -23,13 +23,15 @@ export default function Demanda({ perfil }) {
   const [arqs, setArqs] = useState([])
   const [evs, setEvs] = useState([])
   const [busy, setBusy] = useState('')
+  const [edit, setEdit] = useState(null)
+  const [cands, setCands] = useState([])
   const [coment, setComent] = useState('')
   const [provas, setProvas] = useState([])
   const [lado, setLado] = useState(0)
 
   const carregar = useCallback(async () => {
     const [{ data: dem }, { data: a }, { data: e }] = await Promise.all([
-      supabase.from('gr_demandas').select('*, candidato:gr_candidatos(*), designer:gr_perfis!gr_demandas_designer_id_fkey(nome)').eq('id', id).single(),
+      supabase.from('gr_demandas').select('*, candidato:gr_candidatos(*), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(*), designer:gr_perfis!gr_demandas_designer_id_fkey(nome)').eq('id', id).single(),
       supabase.from('gr_arquivos').select('*, enviado:gr_perfis(nome)').eq('demanda_id', id).order('versao', { ascending: false }),
       supabase.from('gr_eventos').select('*, autor:gr_perfis(nome)').eq('demanda_id', id).order('em', { ascending: false }),
     ])
@@ -40,7 +42,7 @@ export default function Demanda({ perfil }) {
     for (const p of paths) { const { data } = await supabase.storage.from('materiais').createSignedUrl(p, 3600); urls.push(data?.signedUrl) }
     setProvas(urls); setLado(0)
   }, [id])
-  useEffect(() => { carregar() }, [carregar])
+  useEffect(() => { carregar(); supabase.from('gr_candidatos').select('id,nome,cargo,cnpj_campanha').eq('ativo', true).order('nome').then(({ data }) => setCands(data || [])) }, [carregar])
 
   async function atualizar(patch, tipo, detalhe) {
     await supabase.from('gr_demandas').update(patch).eq('id', id)
@@ -90,10 +92,11 @@ export default function Demanda({ perfil }) {
       const ordem = { reprovado: 0, ressalvas: 1, aprovado: 2 }
       let resultado = ladosRel.reduce((a, l) => ordem[l.resultado] < ordem[a] ? l.resultado : a, 'aprovado')
       let extra = []
-      if (d.candidato) {
+      const ct = d.contratante || d.candidato
+      if (ct) {
         setBusy('Conferindo CNPJ e tiragem…')
-        const { data: outros } = await supabase.from('gr_candidatos').select('nome, cnpj:cnpj_campanha').neq('id', d.candidato.id)
-        try { const chk = await checarCnpj(fontes, { cand: d.candidato, quantidade: d.quantidade, outros: outros || [] }, setBusy); extra.push(chk) }
+        const { data: outros } = await supabase.from('gr_candidatos').select('nome, cnpj:cnpj_campanha').neq('id', ct.id)
+        try { const chk = await checarCnpj(fontes, { cand: ct, quantidade: d.quantidade, outros: outros || [] }, setBusy); extra.push(chk) }
         catch (e) { extra.push({ t: 'CNPJ e tiragem', s: 'warn', msg: 'Não foi possível conferir automaticamente: ' + e.message }) }
         const mapa = { fail: 'reprovado', warn: 'ressalvas', pass: 'aprovado' }
         for (const c of extra) if (ordem[mapa[c.s]] < ordem[resultado]) resultado = mapa[c.s]
@@ -158,9 +161,11 @@ export default function Demanda({ perfil }) {
         <section className="card">
           <h2>{etapaNome}</h2>
           {busy && <p className="busy">{busy}</p>}
-          {d.candidato?.cnpj_campanha && d.etapa !== 'concluida' && (() => {
-            const txt = `CNPJ CONTRATANTE ${d.candidato.cnpj_campanha}${d.candidato.cnpj_grafica ? ` • CNPJ GRÁFICA ${d.candidato.cnpj_grafica}` : ''}${d.quantidade ? ` • TIRAGEM ${d.quantidade} UN.` : ''}`
-            return <div className="cnpj"><strong>Rodapé obrigatório</strong>{d.candidato.status_cnpj && d.candidato.status_cnpj !== 'OK' && <span className="err"> · {d.candidato.status_cnpj}</span>}<code>{txt}</code><button type="button" className="link" onClick={() => navigator.clipboard.writeText(txt)}>copiar</button></div>
+          {(() => {
+            const ct = d.contratante || d.candidato
+            if (!ct?.cnpj_campanha || d.etapa === 'concluida') return null
+            const txt = `CNPJ CONTRATANTE ${ct.cnpj_campanha}${ct.cnpj_grafica ? ` • CNPJ GRÁFICA ${ct.cnpj_grafica}` : ''}${d.quantidade ? ` • TIRAGEM ${d.quantidade} UN.` : ''}`
+            return <div className="cnpj"><strong>Rodapé obrigatório</strong>{d.contratante && <span className="muted"> · contratante: {ct.nome} ({ct.cargo})</span>}{ct.status_cnpj && ct.status_cnpj !== 'OK' && <span className="err"> · {ct.status_cnpj}</span>}<code>{txt}</code><button type="button" className="link" onClick={() => navigator.clipboard.writeText(txt)}>copiar</button></div>
           })()}
 
           {d.etapa === 'entrada' && <>
@@ -251,6 +256,18 @@ export default function Demanda({ perfil }) {
           <section className="card">
             <h2>Histórico</h2>
             {evs.map(e => <div key={e.id} className="ev"><span className="muted">{horaBR(e.em)} · {e.autor?.nome}</span><br />{e.detalhe}</div>)}
+          </section>
+          <section className="card">
+            <h2>Dados da demanda <button className="link" onClick={() => setEdit(edit ? null : { titulo: d.titulo, largura_mm: d.largura_mm || '', altura_mm: d.altura_mm || '', quantidade: d.quantidade || '', prazo: d.prazo || '', material: d.material || '', contratante_id: d.contratante_id || '', briefing: d.briefing || '' })}>{edit ? 'cancelar' : 'editar'}</button></h2>
+            {edit ? <>
+              <label>Título<input value={edit.titulo} onChange={e => setEdit({ ...edit, titulo: e.target.value })} /></label>
+              <div className="row"><label>Largura (mm)<input type="number" step="0.5" value={edit.largura_mm} onChange={e => setEdit({ ...edit, largura_mm: e.target.value })} /></label><label>Altura (mm)<input type="number" step="0.5" value={edit.altura_mm} onChange={e => setEdit({ ...edit, altura_mm: e.target.value })} /></label></div>
+              <div className="row"><label>Quantidade<input type="number" value={edit.quantidade} onChange={e => setEdit({ ...edit, quantidade: e.target.value })} /></label><label>Prazo<input type="date" value={edit.prazo} onChange={e => setEdit({ ...edit, prazo: e.target.value })} /></label></div>
+              <label>Material<input value={edit.material} onChange={e => setEdit({ ...edit, material: e.target.value })} /></label>
+              <label>CNPJ contratante<select value={edit.contratante_id} onChange={e => setEdit({ ...edit, contratante_id: e.target.value })}><option value="">do próprio candidato</option>{cands.filter(c => c.cnpj_campanha).map(c => <option key={c.id} value={c.id}>{c.nome} ({c.cargo})</option>)}</select></label>
+              <label>Briefing<textarea rows="3" value={edit.briefing} onChange={e => setEdit({ ...edit, briefing: e.target.value })} /></label>
+              <button className="btn" onClick={async () => { const p = { ...edit, largura_mm: edit.largura_mm || null, altura_mm: edit.altura_mm || null, quantidade: edit.quantidade || null, prazo: edit.prazo || null, material: edit.material || null, contratante_id: edit.contratante_id || null, briefing: edit.briefing || null }; await atualizar(p, 'editada', `${perfil.nome} editou os dados da demanda`); setEdit(null) }}>Salvar</button>
+            </> : <p className="muted">Contratante: {(d.contratante || d.candidato)?.nome || '—'}{d.material && ` · ${d.material}`}{d.briefing && <><br />{d.briefing}</>}</p>}
           </section>
           {d.etapa !== 'concluida' && <button className="link danger" onClick={async () => { if (confirm('Excluir esta demanda e todos os arquivos?')) { await supabase.from('gr_demandas').delete().eq('id', id); nav('/') } }}>Excluir demanda</button>}
         </aside>
