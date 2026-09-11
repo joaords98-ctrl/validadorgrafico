@@ -31,7 +31,7 @@ export default function Demanda({ perfil }) {
 
   const carregar = useCallback(async () => {
     const [{ data: dem }, { data: a }, { data: e }] = await Promise.all([
-      supabase.from('gr_demandas').select('*, candidato:gr_candidatos(*), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(*), designer:gr_perfis!gr_demandas_designer_id_fkey(nome)').eq('id', id).single(),
+      supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(*), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(*), designer:gr_perfis!gr_demandas_designer_id_fkey(nome)').eq('id', id).single(),
       supabase.from('gr_arquivos').select('*, enviado:gr_perfis(nome)').eq('demanda_id', id).order('versao', { ascending: false }),
       supabase.from('gr_eventos').select('*, autor:gr_perfis(nome)').eq('demanda_id', id).order('em', { ascending: false }),
     ])

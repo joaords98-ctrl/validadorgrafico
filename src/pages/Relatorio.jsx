@@ -7,7 +7,7 @@ export default function Relatorio() {
   const [so, setSo] = useState('concluida')
   const [de, setDe] = useState(''), [ate, setAte] = useState('')
   useEffect(() => {
-    supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,nome_completo,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,resultado)')
+    supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,nome_completo,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,resultado)')
       .order('enviado_grafica_em', { ascending: false, nullsFirst: false }).then(({ data }) => setItens(data || []))
   }, [])
   const etapaNome = Object.fromEntries(ETAPAS)

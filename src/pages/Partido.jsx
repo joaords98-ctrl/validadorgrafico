@@ -20,7 +20,7 @@ export default function Partido() {
   const [provas, setProvas] = useState({})
   const [busca, setBusca] = useState('')
   useEffect(() => {
-    supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,prova_path,resultado)')
+    supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,prova_path,resultado)')
       .order('prazo', { ascending: true, nullsFirst: false }).then(async ({ data }) => {
         const lista = data || []; setItens(lista)
         const p = {}

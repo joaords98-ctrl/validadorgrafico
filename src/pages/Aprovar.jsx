@@ -17,7 +17,7 @@ export default function Aprovar({ modo }) {
   const [busy, setBusy] = useState(false)
 
   async function carregar() {
-    const { data: dem } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome)').eq('token', token).maybeSingle()
+    const { data: dem } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome)').eq('token', token).maybeSingle()
     setD(dem || null); if (!dem) return
     const { data: a } = await supabase.from('gr_arquivos').select('*').eq('demanda_id', dem.id).eq('final', false).order('versao', { ascending: false }).limit(1)
     const ult = a?.[0]; setArq(ult || null)

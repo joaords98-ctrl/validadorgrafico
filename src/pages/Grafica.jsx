@@ -5,7 +5,7 @@ export default function Grafica() {
   const [itens, setItens] = useState([])
   const [evs, setEvs] = useState({})
   async function carregar() {
-    const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,path,relatorio,criado_em)')
+    const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,path,relatorio,criado_em)')
       .in('etapa', ['fechamento', 'concluida']).order('enviado_grafica_em', { ascending: false, nullsFirst: true })
     setItens(data || [])
     const { data: e } = await supabase.from('gr_eventos').select('demanda_id,tipo,em').in('tipo', ['grafica_recebeu', 'grafica_entregou'])

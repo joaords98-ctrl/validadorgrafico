@@ -9,7 +9,7 @@ export default function Board() {
   const [busca, setBusca] = useState('')
   useEffect(() => {
     supabase.from('gr_demandas')
-      .select('*, candidato:gr_candidatos(nome), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(resultado, versao)')
+      .select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(resultado, versao)')
       .order('prazo', { ascending: true, nullsFirst: false })
       .then(({ data }) => setItens(data || []))
   }, [])
