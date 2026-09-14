@@ -171,6 +171,15 @@ export default function Demanda({ perfil }) {
     setBusy('')
   }
 
+  async function excluirArquivo(a) {
+    const nome = a.fonte ? a.path.split('/').pop().replace(/^fonte-\d+-/, '') : `v${a.versao}${a.final ? ' (final)' : ''}`
+    if (!confirm(`Excluir ${nome}? O arquivo sai do storage e da lista.`)) return
+    const paths = [a.path, ...(a.relatorio?.arquivos || []), ...(a.relatorio?.lados || []).map(l => l.prova_path), a.prova_path, a.previa_path].filter(Boolean)
+    await supabase.storage.from('materiais').remove([...new Set(paths)])
+    await supabase.from('gr_arquivos').delete().eq('id', a.id)
+    await registrar(id, 'excluido', `${perfil.nome} excluiu ${nome}`, perfil?.id)
+    carregar()
+  }
   async function baixar(path) { const { data } = await supabase.storage.from('materiais').createSignedUrl(path, 600); if (data) window.open(data.signedUrl, '_blank') }
 
   if (!d) return <main className="detail"><p className="muted">Carregando…</p></main>
@@ -211,6 +220,14 @@ export default function Demanda({ perfil }) {
             {ult?.resultado === 'reprovado' && <p className="err">Última versão reprovada na validação técnica. Corrija os itens abaixo e envie de novo.</p>}
             <Upload onFiles={upload} busy={busy} />
             {d.designer_id !== perfil?.id && <button className="link" onClick={() => atualizar({ designer_id: perfil.id }, 'assumida', `${perfil.nome} assumiu a arte`)}>Assumir esta demanda</button>}
+            {ult && <div className="forcar">
+              <strong>Seguir mesmo assim</strong>
+              <p className="muted">Use quando a reprovação técnica não se aplica (ex.: o arquivo que vai para a gráfica é o CDR e o PDF é só referência). Fica registrado no histórico.</p>
+              <div className="row">
+                <button className="btn ghost" onClick={() => { const m = prompt('Motivo para avançar sem passar na validação:'); if (m) atualizar({ etapa: 'aprovacao', aprov_coordenacao: false, aprov_candidato: false }, 'forcado', `${perfil.nome} enviou para aprovação apesar da reprovação técnica: ${m}`) }}>Mandar para aprovação</button>
+                <button className="btn ghost" onClick={() => { const m = prompt('Motivo para pular as aprovações e ir direto para a gráfica:'); if (m) atualizar({ etapa: 'fechamento', aprov_coordenacao: true, aprov_candidato: true }, 'forcado', `${perfil.nome} enviou direto para a gráfica, sem aprovações: ${m}`) }}>Direto para a gráfica</button>
+              </div>
+            </div>}
           </>}
 
           {d.etapa === 'aprovacao' && <>
@@ -226,6 +243,7 @@ export default function Demanda({ perfil }) {
                   <p className="muted">O candidato vê só a arte e pode deixar observações ou marcar "está tudo certo".</p></div>}
                 <div className="linkbox f"><strong>Aprovação do partido</strong><code>{linkF}</code>
                   <div className="row"><button type="button" className="btn ghost" onClick={() => navigator.clipboard.writeText(linkF)}>Copiar</button><a className="btn" href={wa('', msgF)} target="_blank" rel="noreferrer">Enviar no WhatsApp</a></div></div>
+                <button className="link" onClick={() => { const m = prompt('Motivo para pular as aprovações pendentes e liberar para a gráfica:'); if (m) atualizar({ etapa: 'fechamento', aprov_coordenacao: true, aprov_candidato: true }, 'forcado', `${perfil.nome} liberou para a gráfica sem as aprovações pendentes: ${m}`) }}>Pular aprovações e liberar para a gráfica</button>
                 {evs.filter(e => e.tipo === 'observacao').length > 0 && <div className="obs"><strong>Observações do candidato</strong>{evs.filter(e => e.tipo === 'observacao').map(e => <p key={e.id}><span className="muted">{horaBR(e.em)}</span> · {e.detalhe.replace(/^Candidato( — [^:]+)? observou pelo link: /, '')}</p>)}</div>}
               </>
             })()}
@@ -247,7 +265,7 @@ export default function Demanda({ perfil }) {
             {arqs.filter(a => a.fonte).map(a => <div key={a.id} className="fonte">
               {fontePrevia[a.id] ? <img src={fontePrevia[a.id]} alt="prévia" /> : <div className="semprevia">{a.path.split('.').pop().toUpperCase()}</div>}
               <div><b>{a.path.split('/').pop().replace(/^fonte-\d+-/, '')}</b><br /><small className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</small><br />
-                <button className="link" onClick={() => baixar(a.path)}>baixar</button> · <label className="link">{fontePrevia[a.id] ? 'trocar prévia' : 'anexar prévia (PNG/JPG)'}<input type="file" accept="image/png,image/jpeg" style={{ display: 'none' }} onChange={e => { uploadPrevia(a, e.target.files[0]); e.target.value = '' }} /></label></div>
+                <button className="link" onClick={() => baixar(a.path)}>baixar</button> · <button className="link danger" onClick={() => excluirArquivo(a)}>excluir</button> · <label className="link">{fontePrevia[a.id] ? 'trocar prévia' : 'anexar prévia (PNG/JPG)'}<input type="file" accept="image/png,image/jpeg" style={{ display: 'none' }} onChange={e => { uploadPrevia(a, e.target.files[0]); e.target.value = '' }} /></label></div>
             </div>)}
             {aviso && <p className="ok">{aviso}</p>}
             {d.etapa !== 'concluida' && <>
@@ -295,7 +313,7 @@ export default function Demanda({ perfil }) {
           </section>
           <section className="card">
             <h2>Versões</h2>
-            {arqs.map(a => <div key={a.id} className="ver"><span>{a.fonte ? 'fonte · ' + a.path.split('.').pop().toUpperCase() : 'v' + a.versao + (a.final ? ' · final' : '')} {!a.fonte && <span className={'dot ' + (a.final ? 'ok' : { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[a.resultado])} />}</span><span className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</span>{(a.relatorio?.arquivos || [a.path]).map(p => <button key={p} className="link" onClick={() => baixar(p)}>{p.split('.').pop().toUpperCase()}</button>)}</div>)}
+            {arqs.map(a => <div key={a.id} className="ver"><span>{a.fonte ? 'fonte · ' + a.path.split('.').pop().toUpperCase() : 'v' + a.versao + (a.final ? ' · final' : '')} {!a.fonte && <span className={'dot ' + (a.final ? 'ok' : { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[a.resultado])} />}</span><span className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</span><span>{(a.relatorio?.arquivos || [a.path]).map(p => <button key={p} className="link" onClick={() => baixar(p)}>{p.split('.').pop().toUpperCase()}</button>)} <button className="link danger" onClick={() => excluirArquivo(a)} title="Excluir">✕</button></span></div>)}
             {!arqs.length && <p className="muted">Nenhum arquivo ainda.</p>}
           </section>
           <section className="card">
