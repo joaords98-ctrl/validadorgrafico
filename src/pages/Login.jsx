@@ -24,7 +24,7 @@ export default function Login({ onEntrar, liberado, onSenha }) {
     <main className="login">
       <form onSubmit={checar} className="card">
         <img className="logo" src="/missao.png" alt="Missão" /><h1>Validador Gráfico</h1>
-        <p className="muted">Digite a senha da equipe, do partido ou da gráfica.</p>
+        <p className="muted">Digite a senha da equipe, do partido, da gráfica ou do comitê.</p>
         <label>Senha<input type="password" value={senha} onChange={e => setSenha(e.target.value)} autoFocus /></label>
         {erroSenha && <p className="err">{erroSenha}</p>}
         <button className="btn" type="submit">Entrar</button>

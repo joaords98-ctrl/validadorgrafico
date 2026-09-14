@@ -81,3 +81,15 @@ label.link{cursor:pointer;color:var(--ink2);text-decoration:underline;display:in
 .forcar{margin-top:14px;border-top:1px dashed var(--rule);padding-top:10px;font-size:14px}
 .devolvido{background:#fde8ea;border-left:4px solid var(--fail);padding:10px 12px;margin-bottom:12px}
 .col.conferencia{border-color:var(--amarelo)} .etapa.conferencia{background:var(--amarelo)}
+/* área da gráfica */
+.grafica .chips{display:flex;gap:6px;flex-wrap:wrap} .grafica .chips .btn{padding:6px 10px;font-size:14px}
+.ggrupo .sec{margin:6px 0 0}
+.gcard{padding:0;overflow:hidden} .gcard.open{border-color:var(--ink)}
+.ghead{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;padding:12px;cursor:pointer} .ghead:hover{background:#fafaf8}
+.ghead img{width:110px;height:110px;object-fit:contain;background:#f0f0ee;border:1px solid var(--rule)} .ghead .semprevia{width:110px;height:110px}
+.ginfo h2{margin:2px 0 6px;font-size:20px}
+.gtags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.gtags .tag{background:#e9e9e6;color:var(--ink);font-weight:600;font-size:13px;padding:3px 8px} .gtags .tag.k{background:var(--ink);color:#fff} .gtags .tag.y{background:var(--amarelo)} .gtags .tag.r{background:var(--fail);color:#fff}
+.gact{display:flex;flex-direction:column;gap:6px;align-items:flex-end;white-space:nowrap}
+.gbody{border-top:1px solid var(--rule);padding:12px}
+@media(max-width:700px){.ghead{grid-template-columns:70px 1fr} .ghead img,.ghead .semprevia{width:70px;height:70px} .gact{grid-column:1/-1;flex-direction:row;justify-content:space-between}}

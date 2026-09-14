@@ -18,6 +18,7 @@ Três senhas, cada uma abre uma área diferente:
 | `missao2026` | `senha_painel` | painel completo da equipe |
 | `partido2026` | `senha_partido` | lista de materiais para aprovar |
 | `grafica2026` | `senha_grafica` | arquivos finais para download, com recebimento/entrega |
+| `comite2026` | `senha_comite` | quem recebe o material impresso: marca recebimento/conferência e retirada pelo candidato |
 
 Para trocar: `update gr_config set valor = 'nova' where chave = 'senha_partido';`
 Quem já estava logado precisa digitar a nova. Os links de aprovação (`/a/...` e `/c/...`) não pedem senha.

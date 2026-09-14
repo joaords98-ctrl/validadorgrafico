@@ -11,6 +11,7 @@ import Lote from './pages/Lote'
 import Relatorio from './pages/Relatorio'
 import Partido from './pages/Partido'
 import Grafica from './pages/Grafica'
+import Comite from './pages/Comite'
 
 const KEY = 'grafica.usuario', SKEY = 'grafica.senha'
 
@@ -31,9 +32,9 @@ export default function App() {
   if (loc.pathname.startsWith('/a/') || loc.pathname.startsWith('/c/')) return <Routes><Route path="/a/:token" element={<Aprovar modo="candidato" />} /><Route path="/c/:token" element={<Aprovar modo="coordenacao" />} /></Routes>
   if (liberado === undefined) return <main className="login"><p>Carregando…</p></main>
   const sairTudo = () => { localStorage.removeItem(KEY); localStorage.removeItem(SKEY); setPerfil(null); setLiberado(false) }
-  if (liberado === 'partido' || liberado === 'grafica') return <>
-    <header className="top"><span className="brand"><img src="/missao.png" alt="Missão" /><span>Validador Gráfico<small>{liberado === 'partido' ? 'Aprovações do partido' : 'Área da gráfica'}</small></span></span><nav><button className="link" onClick={sairTudo}>sair</button></nav></header>
-    {liberado === 'partido' ? <Partido /> : <Grafica />}
+  if (liberado === 'partido' || liberado === 'grafica' || liberado === 'comite') return <>
+    <header className="top"><span className="brand"><img src="/missao.png" alt="Missão" /><span>Validador Gráfico<small>{liberado === 'partido' ? 'Aprovações do partido' : liberado === 'grafica' ? 'Área da gráfica' : 'Comitê — recebimento e remessa'}</small></span></span><nav><button className="link" onClick={sairTudo}>sair</button></nav></header>
+    {liberado === 'partido' ? <Partido /> : liberado === 'grafica' ? <Grafica /> : <Comite />}
   </>
   if (!liberado || !perfil) return <Login liberado={liberado} onSenha={(s, papel) => { localStorage.setItem(SKEY, s); setLiberado(papel) }} onEntrar={p => { localStorage.setItem(KEY, JSON.stringify(p)); setPerfil(p) }} />
   const sair = sairTudo
