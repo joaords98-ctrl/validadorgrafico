@@ -39,7 +39,7 @@ export default function Demanda({ perfil }) {
     ])
     setD(dem); setArqs(a || []); setEvs(e || [])
     const ult = (a || [])[0]
-    const paths = ult?.relatorio?.lados ? ult.relatorio.lados.map(l => l.prova_path) : ult?.prova_path ? [ult.prova_path] : []
+    const paths = ult?.relatorio?.lados ? ult.relatorio.lados.map(l => l.prova_path) : ult?.prova_path ? [ult.prova_path] : (a || []).filter(x => x.fonte && x.previa_path).map(x => x.previa_path)
     const urls = []
     for (const p of paths) { const { data } = await supabase.storage.from('materiais').createSignedUrl(p, 3600); urls.push(data?.signedUrl) }
     setProvas(urls); setLado(0)
@@ -220,11 +220,11 @@ export default function Demanda({ perfil }) {
             {ult?.resultado === 'reprovado' && <p className="err">Última versão reprovada na validação técnica. Corrija os itens abaixo e envie de novo.</p>}
             <Upload onFiles={upload} busy={busy} />
             {d.designer_id !== perfil?.id && <button className="link" onClick={() => atualizar({ designer_id: perfil.id }, 'assumida', `${perfil.nome} assumiu a arte`)}>Assumir esta demanda</button>}
-            {ult && <div className="forcar">
+            {(ult || arqs.some(a => a.fonte)) && <div className="forcar">
               <strong>Seguir mesmo assim</strong>
-              <p className="muted">Use quando a reprovação técnica não se aplica (ex.: o arquivo que vai para a gráfica é o CDR e o PDF é só referência). Fica registrado no histórico.</p>
+              <p className="muted">Use quando a validação não se aplica ou o arquivo é só o CDR com prévia. Nos links de aprovação, sem PDF validado, o partido e o candidato veem a prévia do arquivo fonte. Fica registrado no histórico.</p>
               <div className="row">
-                <button className="btn ghost" onClick={() => { const m = prompt('Motivo para avançar sem passar na validação:'); if (m) atualizar({ etapa: 'aprovacao', aprov_coordenacao: false, aprov_candidato: false }, 'forcado', `${perfil.nome} enviou para aprovação apesar da reprovação técnica: ${m}`) }}>Mandar para aprovação</button>
+                <button className="btn ghost" onClick={() => { const m = prompt('Motivo para avançar sem passar na validação:'); if (m) atualizar({ etapa: 'aprovacao', aprov_coordenacao: false, aprov_candidato: false }, 'forcado', `${perfil.nome} enviou para aprovação sem validação aprovada: ${m}`) }}>Mandar para aprovação</button>
                 <button className="btn ghost" onClick={() => { const m = prompt('Motivo para pular as aprovações e ir direto para a gráfica:'); if (m) atualizar({ etapa: 'fechamento', aprov_coordenacao: true, aprov_candidato: true }, 'forcado', `${perfil.nome} enviou direto para a gráfica, sem aprovações: ${m}`) }}>Direto para a gráfica</button>
               </div>
             </div>}

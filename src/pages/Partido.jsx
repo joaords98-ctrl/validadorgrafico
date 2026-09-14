@@ -20,11 +20,11 @@ export default function Partido() {
   const [provas, setProvas] = useState({})
   const [busca, setBusca] = useState('')
   useEffect(() => {
-    supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,prova_path,resultado), gr_eventos(tipo)')
+    supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,fonte,prova_path,previa_path,resultado), gr_eventos(tipo)')
       .order('prazo', { ascending: true, nullsFirst: false }).then(async ({ data }) => {
         const lista = data || []; setItens(lista)
         const p = {}
-        for (const d of lista.filter(x => x.etapa === 'aprovacao' && !x.aprov_coordenacao)) { const a = [...d.gr_arquivos].filter(x => !x.final).sort((x, y) => y.versao - x.versao)[0]; if (a?.prova_path) { const { data: u } = await supabase.storage.from('materiais').createSignedUrl(a.prova_path, 3600); p[d.id] = u?.signedUrl } }
+        for (const d of lista.filter(x => x.etapa === 'aprovacao' && !x.aprov_coordenacao)) { const a = [...d.gr_arquivos].filter(x => !x.final && !x.fonte).sort((x, y) => y.versao - x.versao)[0]; const pp = a?.prova_path || d.gr_arquivos.find(x => x.fonte && x.previa_path)?.previa_path; if (pp) { const { data: u } = await supabase.storage.from('materiais').createSignedUrl(pp, 3600); p[d.id] = u?.signedUrl } }
         setProvas(p)
       })
   }, [])
@@ -47,7 +47,7 @@ export default function Partido() {
       <input placeholder="Buscar por título, candidato ou designer" value={busca} onChange={e => setBusca(e.target.value)} style={{ maxWidth: 420, marginBottom: 10 }} />
       <div className="tablewrap"><table className="rel">
         <thead><tr><th>Nº</th><th>Material</th><th>Candidato</th><th>Etapa</th><th>Com quem está</th><th>Prazo</th><th>Versão</th></tr></thead>
-        <tbody>{filtr.map(d => { const ult = [...d.gr_arquivos].sort((a, b) => b.versao - a.versao)[0]; const atras = d.prazo && d.prazo < hoje && d.etapa !== 'concluida'
+        <tbody>{filtr.map(d => { const ult = [...d.gr_arquivos].filter(x => !x.fonte).sort((a, b) => b.versao - a.versao)[0]; const atras = d.prazo && d.prazo < hoje && d.etapa !== 'concluida'
           return <tr key={d.id} className={'et-' + d.etapa}>
             <td>{d.etapa === 'aprovacao' ? <a href={`/c/${d.token}`}>#{d.numero}</a> : '#' + d.numero}</td>
             <td>{d.titulo}<br /><small className="muted">{d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}{d.quantidade ? ` · ${d.quantidade} un.` : ''}</small></td>

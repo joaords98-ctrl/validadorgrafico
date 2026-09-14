@@ -19,9 +19,9 @@ export default function Aprovar({ modo }) {
   async function carregar() {
     const { data: dem } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome)').eq('token', token).maybeSingle()
     setD(dem || null); if (!dem) return
-    const { data: a } = await supabase.from('gr_arquivos').select('*').eq('demanda_id', dem.id).eq('final', false).order('versao', { ascending: false }).limit(1)
-    const ult = a?.[0]; setArq(ult || null)
-    const paths = ult?.relatorio?.lados ? ult.relatorio.lados.map(l => l.prova_path) : ult?.prova_path ? [ult.prova_path] : []
+    const { data: a } = await supabase.from('gr_arquivos').select('*').eq('demanda_id', dem.id).eq('final', false).order('versao', { ascending: false })
+    const ult = (a || []).find(x => !x.fonte); setArq(ult || null)
+    const paths = ult?.relatorio?.lados ? ult.relatorio.lados.map(l => l.prova_path) : ult?.prova_path ? [ult.prova_path] : (a || []).filter(x => x.fonte && x.previa_path).map(x => x.previa_path)
     const urls = []; for (const p of paths) { const { data } = await supabase.storage.from('materiais').createSignedUrl(p, 3600); urls.push(data?.signedUrl) }
     setProvas(urls)
   }
