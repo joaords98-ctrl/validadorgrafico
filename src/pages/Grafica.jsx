@@ -7,8 +7,8 @@ export default function Grafica() {
   const [previas, setPrevias] = useState({})
   const [motivo, setMotivo] = useState({})
   async function carregar() {
-    const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,fonte,path,previa_path,relatorio,criado_em)')
-      .in('etapa', ['fechamento', 'concluida']).order('enviado_grafica_em', { ascending: false, nullsFirst: true })
+    const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,fonte,path,url,previa_path,relatorio,criado_em)')
+      .in('etapa', ['fechamento', 'conferencia', 'concluida']).order('enviado_grafica_em', { ascending: false, nullsFirst: true })
     setItens(data || [])
     const pv = {}
     for (const d of data || []) for (const x of d.gr_arquivos.filter(x => x.fonte && x.previa_path)) { const { data: u } = await supabase.storage.from('materiais').createSignedUrl(x.previa_path, 3600); pv[x.id] = u?.signedUrl }
@@ -17,7 +17,7 @@ export default function Grafica() {
     const m = {}; for (const x of e || []) { m[x.demanda_id] = m[x.demanda_id] || {}; m[x.demanda_id][x.tipo] = x.em }; setEvs(m)
   }
   useEffect(() => { carregar() }, [])
-  async function baixar(path) { const { data } = await supabase.storage.from('materiais').createSignedUrl(path, 600); if (data) window.open(data.signedUrl, '_blank') }
+  async function baixar(path, url) { if (url) return window.open(url, '_blank'); const { data } = await supabase.storage.from('materiais').createSignedUrl(path, 600); if (data) window.open(data.signedUrl, '_blank') }
   async function devolver(d) {
     const m = (motivo[d.id] || '').trim(); if (!m) return alert('Descreva o problema encontrado.')
     if (!confirm('Devolver este material para a equipe de design?')) return
@@ -36,9 +36,9 @@ export default function Grafica() {
         <p className="muted">{d.candidato?.nome || 'Partido'}{d.enviado_grafica_em ? ` · enviado ${horaBR(d.enviado_grafica_em)}` : ' · em fechamento'}</p>
         {rodape && <p className="cnpjline">{rodape}</p>}
         <div className="row">
-          {a ? <button className="btn" onClick={() => baixar(a.path)}>Baixar {a.final ? `arquivo final (${a.path.split('.').pop().toUpperCase()})` : 'PDF aprovado'} · v{a.versao}</button> : <span className="muted">Arquivo ainda não anexado.</span>}
+          {a ? <button className="btn" onClick={() => baixar(a.path, a.url)}>{a.url ? 'Abrir link do' : 'Baixar'} {a.final ? `arquivo final (${a.path.split('.').pop().toUpperCase()})` : 'PDF aprovado'} · v{a.versao}</button> : <span className="muted">Arquivo ainda não anexado.</span>}
           {(a?.relatorio?.arquivos || []).filter(p => p !== a.path).map(p => <button key={p} className="btn ghost" onClick={() => baixar(p)}>{p.split('/').pop()}</button>)}
-          {d.gr_arquivos.filter(x => x.fonte).map(x => <span key={x.id} className="fontebtn">{previas[x.id] && <img src={previas[x.id]} alt="" />}<button className="btn ghost" onClick={() => baixar(x.path)}>Fonte {x.path.split('.').pop().toUpperCase()} — {x.path.split('/').pop().replace(/^fonte-\d+-/, '')}</button></span>)}
+          {d.gr_arquivos.filter(x => x.fonte).map(x => <span key={x.id} className="fontebtn">{previas[x.id] && <img src={previas[x.id]} alt="" />}<button className="btn ghost" onClick={() => baixar(x.path, x.url)}>{x.url ? 'Link · ' : ''}Fonte {x.path.split('.').pop().toUpperCase()} — {x.path.split('/').pop().replace(/^fonte-\d+-/, '')}</button></span>)}
         </div>
         <ol className="gsteps">
           {ETAPAS_GRAFICA.map(([tipo, rotulo], i) => { const feito = e[tipo]; const anterior = i === 0 || e[ETAPAS_GRAFICA[i - 1][0]]

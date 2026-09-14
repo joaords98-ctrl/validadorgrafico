@@ -10,6 +10,7 @@ function comQuem(d) {
       return f.length ? `aguardando ${f.join(' e ')}` : 'aprovado — liberando'
     }
     case 'fechamento': return `${d.designer?.nome || 'equipe'} — fechando arquivo p/ gráfica`
+    case 'conferencia': return d.conferido_em ? `no comitê, conferido por ${d.conferido_por} — aguardando retirada` : `gráfica${d.grafica ? ' (' + d.grafica + ')' : ''} — aguardando entrega/conferência`
     case 'concluida': { const f = ETAPAS_GRAFICA.filter(([t]) => (d.gr_eventos || []).some(e => e.tipo === t)); const u = f[f.length - 1]; return `gráfica${d.grafica ? ' (' + d.grafica + ')' : ''} — ${u ? u[1].toLowerCase() : 'enviado ' + dataBR(d.enviado_grafica_em) + ', aguardando recebimento'}` }
     default: return ''
   }

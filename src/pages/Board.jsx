@@ -41,6 +41,7 @@ export default function Board() {
                       {ult && <span className={'dot ' + RES[ult.resultado]} title={'v' + ult.versao + ' ' + ult.resultado} />}
                     </div>
                     {key === 'arte' && (() => { const ev = [...(d.gr_eventos || [])].sort((a, b) => b.em.localeCompare(a.em))[0]; return ev?.tipo === 'grafica_devolveu' ? <div className="meta late">devolvido pela gráfica</div> : null })()}
+                    {key === 'conferencia' && <div className="meta">{d.conferido_em ? `conferido · ${d.conferido_por}` : 'aguardando conferência'}</div>}
                     {key === 'concluida' && (() => { const f = ETAPAS_GRAFICA.filter(([t]) => (d.gr_eventos || []).some(e => e.tipo === t)); const u = f[f.length - 1]; return <div className="meta gstat">{u ? `gráfica: ${u[1].toLowerCase()}` : 'gráfica: aguardando recebimento'}</div> })()}
                     {key === 'aprovacao' && <div className="meta">{d.aprov_coordenacao ? '✓' : '○'} Partido &nbsp; {d.aprov_candidato ? '✓' : '○'} candidato</div>}
                   </Link>

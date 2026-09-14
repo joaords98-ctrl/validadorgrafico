@@ -80,3 +80,4 @@ label.link{cursor:pointer;color:var(--ink2);text-decoration:underline;display:in
 .fontebtn{display:inline-flex;align-items:center;gap:6px} .fontebtn img{height:38px;border:1px solid var(--rule)}
 .forcar{margin-top:14px;border-top:1px dashed var(--rule);padding-top:10px;font-size:14px}
 .devolvido{background:#fde8ea;border-left:4px solid var(--fail);padding:10px 12px;margin-bottom:12px}
+.col.conferencia{border-color:var(--amarelo)} .etapa.conferencia{background:var(--amarelo)}

@@ -15,8 +15,8 @@ export default function Relatorio() {
   const totalUn = lista.reduce((a, d) => a + (d.quantidade || 0), 0)
   const versaoFinal = d => { const a = [...(d.gr_arquivos || [])].sort((x, y) => y.versao - x.versao); return (a.find(x => x.final) || a[0])?.versao }
 
-  const cols = ['Nº', 'Candidato', 'Cargo', 'Número', 'Peça', 'Tamanho (mm)', 'Quantidade', 'Etapa', 'Designer', 'Gráfica', 'Enviado em', 'Versão', 'Contratante', 'CNPJ contratante', 'CNPJ gráfica', 'Prazo']
-  const linha = d => [d.numero, d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação'), d.candidato?.cargo || '', d.candidato?.numero || '', d.peca, d.largura_mm ? `${d.largura_mm}×${d.altura_mm}` : '', d.quantidade || '', etapaNome[d.etapa], d.designer?.nome || '', d.grafica || '', d.enviado_grafica_em ? horaBR(d.enviado_grafica_em) : '', versaoFinal(d) ? 'v' + versaoFinal(d) : '', (d.contratante || d.candidato)?.nome || '', (d.contratante || d.candidato)?.cnpj_campanha || '', (d.contratante || d.candidato)?.cnpj_grafica || '', d.prazo ? dataBR(d.prazo) : '']
+  const cols = ['Nº', 'Candidato', 'Cargo', 'Número', 'Peça', 'Tamanho (mm)', 'Quantidade', 'Etapa', 'Designer', 'Gráfica', 'Enviado em', 'Versão', 'Contratante', 'CNPJ contratante', 'CNPJ gráfica', 'Prazo', 'Conferido por', 'Conferido em', 'Retirado por', 'Retirado em']
+  const linha = d => [d.numero, d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação'), d.candidato?.cargo || '', d.candidato?.numero || '', d.peca, d.largura_mm ? `${d.largura_mm}×${d.altura_mm}` : '', d.quantidade || '', etapaNome[d.etapa], d.designer?.nome || '', d.grafica || '', d.enviado_grafica_em ? horaBR(d.enviado_grafica_em) : '', versaoFinal(d) ? 'v' + versaoFinal(d) : '', (d.contratante || d.candidato)?.nome || '', (d.contratante || d.candidato)?.cnpj_campanha || '', (d.contratante || d.candidato)?.cnpj_grafica || '', d.prazo ? dataBR(d.prazo) : '', d.conferido_por || '', d.conferido_em ? horaBR(d.conferido_em) : '', d.retirado_por || '', d.retirado_em ? horaBR(d.retirado_em) : '']
 
   function csv() {
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`

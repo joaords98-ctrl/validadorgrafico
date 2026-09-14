@@ -8,6 +8,7 @@ export const ETAPAS = [
   ['arte', 'Desenvolvimento da arte'],
   ['aprovacao', 'Aprovação executiva e política'],
   ['fechamento', 'Envio para produção'],
+  ['conferencia', 'Conferência e remessa'],
   ['concluida', 'Concluídas'],
 ]
 export const ETAPAS_GRAFICA = [
