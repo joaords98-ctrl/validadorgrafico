@@ -5,6 +5,7 @@ export default function Grafica() {
   const [itens, setItens] = useState([])
   const [evs, setEvs] = useState({})
   const [previas, setPrevias] = useState({})
+  const [motivo, setMotivo] = useState({})
   async function carregar() {
     const { data } = await supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,fonte,path,previa_path,relatorio,criado_em)')
       .in('etapa', ['fechamento', 'concluida']).order('enviado_grafica_em', { ascending: false, nullsFirst: true })
@@ -17,6 +18,13 @@ export default function Grafica() {
   }
   useEffect(() => { carregar() }, [])
   async function baixar(path) { const { data } = await supabase.storage.from('materiais').createSignedUrl(path, 600); if (data) window.open(data.signedUrl, '_blank') }
+  async function devolver(d) {
+    const m = (motivo[d.id] || '').trim(); if (!m) return alert('Descreva o problema encontrado.')
+    if (!confirm('Devolver este material para a equipe de design?')) return
+    await supabase.from('gr_demandas').update({ etapa: 'arte', enviado_grafica_em: null }).eq('id', d.id)
+    await registrar(d.id, 'grafica_devolveu', `Gráfica devolveu o arquivo: ${m}`, null)
+    setMotivo({ ...motivo, [d.id]: '' }); carregar()
+  }
   async function marcar(d, tipo) { const et = ETAPAS_GRAFICA.find(x => x[0] === tipo); await registrar(d.id, tipo, `Gráfica: ${et[2]}`, null); carregar() }
   const arquivoFinal = d => { const a = [...d.gr_arquivos].filter(x => !x.fonte).sort((x, y) => y.versao - x.versao); return a.find(x => x.final) || a[0] }
   return <main className="form wide">
@@ -36,6 +44,10 @@ export default function Grafica() {
           {ETAPAS_GRAFICA.map(([tipo, rotulo], i) => { const feito = e[tipo]; const anterior = i === 0 || e[ETAPAS_GRAFICA[i - 1][0]]
             return <li key={tipo} className={feito ? 'ok' : anterior ? 'now' : ''}>{feito ? <><b>{rotulo}</b> <small className="muted">{horaBR(feito)}</small></> : anterior ? <button className="btn" onClick={() => marcar(d, tipo)}>{rotulo}</button> : <span className="muted">{rotulo}</span>}</li> })}
         </ol>
+        {!e.grafica_entregou && <details className="troca"><summary>Encontrei um problema — devolver arquivo</summary>
+          <textarea rows="2" value={motivo[d.id] || ''} onChange={ev => setMotivo({ ...motivo, [d.id]: ev.target.value })} placeholder="Ex.: fonte faltando, sangria insuficiente, imagem em baixa, texto cortado…" />
+          <div className="row"><button className="btn ghost" onClick={() => devolver(d)}>Devolver para a equipe</button></div>
+        </details>}
       </div> })}
     {!itens.length && <div className="card"><p className="muted">Nenhum material liberado ainda.</p></div>}
   </main>

@@ -215,6 +215,7 @@ export default function Demanda({ perfil }) {
           </>}
 
           {d.molde && MOLDES[d.molde] && <div className="linkbox"><strong>Molde: {MOLDES[d.molde].nome}</strong><p className="muted">{MOLDES[d.molde].dica}</p><a className="btn ghost" href={MOLDES[d.molde].arquivo} download>Baixar molde (PDF)</a></div>}
+          {d.etapa === 'arte' && evs[0]?.tipo === 'grafica_devolveu' && <p className="devolvido"><strong>Devolvido pela gráfica:</strong> {evs[0].detalhe.replace(/^Gráfica devolveu o arquivo: /, '')}</p>}
           {d.etapa === 'arte' && <>
             {d.briefing && <p className="brief">{d.briefing}</p>}
             {ult?.resultado === 'reprovado' && <p className="err">Última versão reprovada na validação técnica. Corrija os itens abaixo e envie de novo.</p>}
