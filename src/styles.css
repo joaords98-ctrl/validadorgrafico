@@ -75,3 +75,6 @@ aside{display:flex;flex-direction:column;gap:16px}
 table.rel td small{white-space:normal}
 .gsteps{list-style:none;padding:0;margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap} .gsteps li{padding:8px 10px;border:1px solid var(--rule);background:#f4f4f2;min-width:150px} .gsteps li.ok{background:#e6f4ea;border-color:var(--pass)} .gsteps li.now{background:#fff8dc;border-color:var(--amarelo)} .gsteps li .btn{width:100%}
 .gstat{color:var(--ink);font-weight:700}
+.fonte{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--rule);font-size:14px} .fonte img{width:90px;border:1px solid var(--rule)} .semprevia{width:90px;height:60px;display:grid;place-items:center;background:#e9e9e6;font-weight:700;color:var(--ink2)}
+label.link{cursor:pointer;color:var(--ink2);text-decoration:underline;display:inline;margin:0}
+.fontebtn{display:inline-flex;align-items:center;gap:6px} .fontebtn img{height:38px;border:1px solid var(--rule)}

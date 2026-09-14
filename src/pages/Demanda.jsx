@@ -24,6 +24,8 @@ export default function Demanda({ perfil }) {
   const [evs, setEvs] = useState([])
   const [busy, setBusy] = useState('')
   const [edit, setEdit] = useState(null)
+  const [aviso, setAviso] = useState('')
+  const [fontePrevia, setFontePrevia] = useState({})
   const [cands, setCands] = useState([])
   const [coment, setComent] = useState('')
   const [provas, setProvas] = useState([])
@@ -41,6 +43,9 @@ export default function Demanda({ perfil }) {
     const urls = []
     for (const p of paths) { const { data } = await supabase.storage.from('materiais').createSignedUrl(p, 3600); urls.push(data?.signedUrl) }
     setProvas(urls); setLado(0)
+    const fp = {}
+    for (const x of (a || []).filter(x => x.fonte && x.previa_path)) { const { data } = await supabase.storage.from('materiais').createSignedUrl(x.previa_path, 3600); fp[x.id] = data?.signedUrl }
+    setFontePrevia(fp)
   }, [id])
   useEffect(() => { carregar(); supabase.from('gr_candidatos').select('id,nome,cargo,cnpj_campanha').eq('ativo', true).order('nome').then(({ data }) => setCands(data || [])) }, [carregar])
 
@@ -127,17 +132,27 @@ export default function Demanda({ perfil }) {
 
   async function uploadFonte(file) {
     if (!file) return
-    setBusy('Anexando arquivo fonte…')
-    const ext = file.name.split('.').pop().toLowerCase()
+    if (arqs.some(a => a.fonte && a.path.endsWith('/' + file.name.replace(/\s+/g, '_'))) && !confirm('Já existe um arquivo fonte com esse nome. Anexar de novo?')) return
+    setBusy('Anexando arquivo fonte…'); setAviso('')
     const n = arqs.filter(a => a.fonte).length + 1
-    const path = `${id}/fonte-${n}.${ext}`
+    const path = `${id}/fonte-${n}-${file.name.replace(/\s+/g, '_')}`
     const { error } = await supabase.storage.from('materiais').upload(path, file, { contentType: file.type || 'application/octet-stream' })
     if (error) alert('Falha: ' + error.message)
     else {
       await supabase.from('gr_arquivos').insert({ demanda_id: id, versao: 1000 + n, path, fonte: true, enviado_por: perfil?.id })
       await registrar(id, 'fonte', `Arquivo fonte anexado: ${file.name}`, perfil?.id)
+      setAviso(`✓ ${file.name} anexado.`)
       carregar()
     }
+    setBusy('')
+  }
+  async function uploadPrevia(arq, file) {
+    if (!file) return
+    setBusy('Enviando prévia…')
+    const path = arq.path.replace(/\.[^.]+$/, '') + '-previa.' + (file.name.split('.').pop().toLowerCase() || 'png')
+    const { error } = await supabase.storage.from('materiais').upload(path, file, { contentType: file.type, upsert: true })
+    if (!error) { await supabase.from('gr_arquivos').update({ previa_path: path }).eq('id', arq.id); await registrar(id, 'fonte', `Prévia anexada para ${arq.path.split('/').pop()}`, perfil?.id); carregar() }
+    else alert('Falha: ' + error.message)
     setBusy('')
   }
   async function uploadFinal(file) {
@@ -228,9 +243,17 @@ export default function Demanda({ perfil }) {
             </div>
           </>}
 
-          {d.etapa !== 'concluida' && <details className="troca"><summary>Anexar arquivo fonte (CDR, AI, PSD, INDD)</summary>
-            <p className="muted">Fica guardado na demanda para a gráfica ou outro designer. Não passa pela validação — a prova e a conferência continuam saindo do PDF.</p>
-            <label className="upload small"><input type="file" accept=".cdr,.ai,.psd,.indd,.svg,.eps,.zip" onChange={e => { uploadFonte(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />Escolher arquivo fonte</label>
+          {(d.etapa !== 'concluida' || arqs.some(a => a.fonte)) && <details className="troca" open={arqs.some(a => a.fonte)}><summary>Arquivos fonte (CDR, AI, PSD, INDD){arqs.some(a => a.fonte) && ` · ${arqs.filter(a => a.fonte).length}`}</summary>
+            {arqs.filter(a => a.fonte).map(a => <div key={a.id} className="fonte">
+              {fontePrevia[a.id] ? <img src={fontePrevia[a.id]} alt="prévia" /> : <div className="semprevia">{a.path.split('.').pop().toUpperCase()}</div>}
+              <div><b>{a.path.split('/').pop().replace(/^fonte-\d+-/, '')}</b><br /><small className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</small><br />
+                <button className="link" onClick={() => baixar(a.path)}>baixar</button> · <label className="link">{fontePrevia[a.id] ? 'trocar prévia' : 'anexar prévia (PNG/JPG)'}<input type="file" accept="image/png,image/jpeg" style={{ display: 'none' }} onChange={e => { uploadPrevia(a, e.target.files[0]); e.target.value = '' }} /></label></div>
+            </div>)}
+            {aviso && <p className="ok">{aviso}</p>}
+            {d.etapa !== 'concluida' && <>
+              <p className="muted">O arquivo fonte fica guardado para a gráfica ou outro designer; não passa pela validação. Para quem não abre CDR, anexe uma prévia em imagem (exporte do Corel em PNG).</p>
+              <label className="upload small"><input type="file" accept=".cdr,.ai,.psd,.indd,.svg,.eps,.zip" onChange={e => { uploadFonte(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />{busy && busy.includes('fonte') ? busy : 'Escolher arquivo fonte'}</label>
+            </>}
           </details>}
           {(d.etapa === 'aprovacao' || d.etapa === 'fechamento') && <details className="troca"><summary>Houve alteração na arte? Trocar arquivo</summary>
             <p className="muted">O novo arquivo vira a v{(arqs.filter(a => !a.fonte)[0]?.versao || 0) + 1}, passa pela validação de novo e as aprovações voltam a zero.</p>
