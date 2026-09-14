@@ -299,7 +299,17 @@ export default function Demanda({ perfil }) {
             <Upload onFiles={upload} busy={busy} trocar />
           </details>}
 
-          {d.etapa === 'fechamento' && <>
+          {d.etapa === 'fechamento' && d.enviado_grafica_em && <>
+            <p className="ok">Enviado para {d.grafica || 'a gráfica'} em {horaBR(d.enviado_grafica_em)} — em produção.</p>
+            {(() => { const g = evs.find(e => e.tipo.startsWith('grafica_') && e.tipo !== 'grafica_devolveu'); return g ? <p className="muted">Gráfica: {g.detalhe.replace(/^Gráfica: /, '')} ({horaBR(g.em)})</p> : <p className="muted">A gráfica ainda não registrou andamento.</p> })()}
+            <div className="row">
+              <label>Quem recebeu no comitê<input value={conf.nome} onChange={e => setConf({ ...conf, nome: e.target.value })} placeholder={perfil?.nome} /></label>
+              <label>Observação (quantidade, avarias…)<input value={conf.obs} onChange={e => setConf({ ...conf, obs: e.target.value })} /></label>
+              <button className="btn" onClick={() => { const n = conf.nome.trim() || perfil.nome; atualizar({ etapa: 'conferencia', conferido_por: n, conferido_em: new Date().toISOString(), conferido_obs: conf.obs || null }, 'conferido', `Material recebido e conferido no comitê por ${n}${conf.obs ? ': ' + conf.obs : ''}`) }}>Material chegou — recebido e conferido</button>
+            </div>
+            <button className="link" onClick={() => atualizar({ enviado_grafica_em: null }, 'fechamento', `${perfil.nome} desfez o envio para a gráfica`)}>Desfazer envio</button>
+          </>}
+          {d.etapa === 'fechamento' && !d.enviado_grafica_em && <>
             <ol className="check">
               <li className={arqs.some(a => a.final) ? 'ok' : ''}>Anexar o arquivo final que vai para a gráfica (CDR fechado, ou PDF/X-1a)
                 <label className="upload small"><input type="file" accept=".cdr,.pdf,.ai,.zip" onChange={e => { uploadFinal(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />Anexar arquivo final</label>
@@ -308,26 +318,18 @@ export default function Demanda({ perfil }) {
                 <div className="muted">Reimpressão sem arquivo novo? Pode marcar como enviado direto no passo 2.</div></li>
               <li>Disparar para a gráfica
                 <div className="row"><input placeholder="Nome da gráfica" value={d.grafica || ''} onChange={e => setD({ ...d, grafica: e.target.value })} />
-                  <button className="btn" onClick={() => atualizar({ grafica: d.grafica, enviado_grafica_em: new Date().toISOString(), etapa: 'conferencia' }, 'fechamento', `Enviado para ${d.grafica || 'gráfica'}`)}>Marcar como enviado</button></div></li>
+                  <button className="btn" onClick={() => atualizar({ grafica: d.grafica, enviado_grafica_em: new Date().toISOString() }, 'fechamento', `Enviado para ${d.grafica || 'gráfica'} — em produção`)}>Marcar como enviado</button></div></li>
             </ol>
           </>}
 
           {d.etapa === 'conferencia' && <>
-            <p className="muted">Enviado para {d.grafica || 'a gráfica'} em {horaBR(d.enviado_grafica_em)}.{(() => { const g = evs.find(e => e.tipo.startsWith('grafica_') && e.tipo !== 'grafica_devolveu'); return g ? ` Última etapa da gráfica: ${g.detalhe.replace(/^Gráfica: /, '')} (${horaBR(g.em)}).` : '' })()}</p>
-            <ol className="check">
-              <li className={d.conferido_em ? 'ok' : ''}><strong>Recebido e conferido no comitê</strong>
-                {d.conferido_em ? <div>{d.conferido_por} · {horaBR(d.conferido_em)}{d.conferido_obs && <> · {d.conferido_obs}</>}</div> : <div className="row">
-                  <label>Quem conferiu<input value={conf.nome} onChange={e => setConf({ ...conf, nome: e.target.value })} placeholder={perfil?.nome} /></label>
-                  <label>Observação (quantidade, avarias…)<input value={conf.obs} onChange={e => setConf({ ...conf, obs: e.target.value })} /></label>
-                  <button className="btn" onClick={() => { const n = conf.nome.trim() || perfil.nome; atualizar({ conferido_por: n, conferido_em: new Date().toISOString(), conferido_obs: conf.obs || null }, 'conferido', `Recebido e conferido no comitê por ${n}${conf.obs ? ': ' + conf.obs : ''}`) }}>Marcar conferido</button>
-                </div>}</li>
-              <li className={d.retirado_em ? 'ok' : ''}><strong>Remetido / retirado pelo candidato</strong>
-                {d.retirado_em ? <div>{d.retirado_por} · {horaBR(d.retirado_em)}{d.retirado_obs && <> · {d.retirado_obs}</>}</div> : <div className="row">
-                  <label>Quem retirou / recebeu<input value={ret.nome} onChange={e => setRet({ ...ret, nome: e.target.value })} placeholder={d.candidato?.nome || 'nome'} /></label>
-                  <label>Observação (enviado por…, quantidade)<input value={ret.obs} onChange={e => setRet({ ...ret, obs: e.target.value })} /></label>
-                  <button className="btn" disabled={!d.conferido_em} onClick={() => { const n = ret.nome.trim() || d.candidato?.nome || 'candidato'; atualizar({ retirado_por: n, retirado_em: new Date().toISOString(), retirado_obs: ret.obs || null, etapa: 'concluida' }, 'retirado', `Remetido/retirado por ${n}${ret.obs ? ': ' + ret.obs : ''} — demanda concluída`) }}>Marcar retirado e concluir</button>
-                </div>}</li>
-            </ol>
+            <p className="ok">Recebido e conferido no comitê por {d.conferido_por} em {horaBR(d.conferido_em)}{d.conferido_obs && <> · {d.conferido_obs}</>}.</p>
+            <h3>Remessa / retirada pelo candidato</h3>
+            <div className="row">
+              <label>Quem retirou / recebeu<input value={ret.nome} onChange={e => setRet({ ...ret, nome: e.target.value })} placeholder={d.candidato?.nome || 'nome'} /></label>
+              <label>Observação (enviado por…, quantidade)<input value={ret.obs} onChange={e => setRet({ ...ret, obs: e.target.value })} /></label>
+              <button className="btn" onClick={() => { const n = ret.nome.trim() || d.candidato?.nome || 'candidato'; atualizar({ retirado_por: n, retirado_em: new Date().toISOString(), retirado_obs: ret.obs || null, etapa: 'concluida' }, 'retirado', `Remetido/retirado por ${n}${ret.obs ? ': ' + ret.obs : ''} — demanda concluída`) }}>Marcar retirado e concluir</button>
+            </div>
           </>}
           {d.etapa === 'concluida' && <div className="ok">
             <p>Enviado para {d.grafica || 'a gráfica'} em {horaBR(d.enviado_grafica_em)}.</p>

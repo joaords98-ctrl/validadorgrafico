@@ -33,7 +33,7 @@ export default function Grafica() {
       return <div className="card gcard" key={d.id}>
         <div className="num">#{d.numero} · {d.peca}{d.largura_mm ? ` ${d.largura_mm} × ${d.altura_mm} mm` : ''} · <b>{d.quantidade ? d.quantidade.toLocaleString('pt-BR') + ' un.' : 'quantidade a confirmar'}</b>{d.prazo ? ` · prazo ${dataBR(d.prazo)}` : ''}</div>
         <h2>{d.titulo}</h2>
-        <p className="muted">{d.candidato?.nome || 'Partido'}{d.enviado_grafica_em ? ` · enviado ${horaBR(d.enviado_grafica_em)}` : ' · em fechamento'}</p>
+        <p className="muted">{d.candidato?.nome || 'Partido'}{d.enviado_grafica_em ? ` · enviado ${horaBR(d.enviado_grafica_em)}` : ' · em fechamento (arquivo ainda não liberado)'}</p>
         {rodape && <p className="cnpjline">{rodape}</p>}
         <div className="row">
           {a ? <button className="btn" onClick={() => baixar(a.path, a.url)}>{a.url ? 'Abrir link do' : 'Baixar'} {a.final ? `arquivo final (${a.path.split('.').pop().toUpperCase()})` : 'PDF aprovado'} · v{a.versao}</button> : <span className="muted">Arquivo ainda não anexado.</span>}
