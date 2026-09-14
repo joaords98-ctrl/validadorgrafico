@@ -6,13 +6,19 @@ import { MOLDES } from '../lib/catalogo'
 
 const ICON = { pass: '✓', warn: '!', fail: '✕' }
 
-function Upload({ onFiles, busy, trocar }) {
-  return <label className="upload">
-    <input type="file" accept="application/pdf,image/png,image/jpeg" multiple onChange={e => { onFiles(e.target.files); e.target.value = '' }} disabled={!!busy} />
-    <strong>{trocar ? 'Enviar arquivo corrigido' : 'Enviar PDF, PNG ou JPEG para validação'}</strong><br />
-    <span className="muted">Frente e verso: um PDF de 2 páginas ou selecione os dois arquivos juntos.</span>
-    {!trocar && <><br /><span className="muted">PDF: formato, sangria, CMYK, resolução, curvas e margens. Imagem: proporção, sangria, modo de cor e resolução efetiva.</span></>}
-  </label>
+function Upload({ onFiles, onLink, busy, trocar }) {
+  const [link, setLink] = useState('')
+  return <div className="envio">
+    <label className="upload">
+      <input type="file" accept=".pdf,.png,.jpg,.jpeg,.cdr,.ai,.psd,.indd,.svg,.eps,.zip" multiple onChange={e => { onFiles(e.target.files); e.target.value = '' }} disabled={!!busy} />
+      <strong>{busy || (trocar ? 'Enviar arquivo corrigido' : 'Enviar arquivos')}</strong><br />
+      <span className="muted">PDF, PNG ou JPEG passam pela validação e geram a prova · CDR, AI, PSD, INDD ficam guardados para a gráfica · frente e verso: selecione os dois juntos · até 50 MB por arquivo</span>
+    </label>
+    {onLink && <div className="row linkrow">
+      <input placeholder="ou cole um link (Drive, WeTransfer) para arquivo maior que 50 MB" value={link} onChange={e => setLink(e.target.value)} />
+      <button type="button" className="btn ghost" disabled={!/^https?:\/\//i.test(link.trim())} onClick={() => { onLink(link.trim()); setLink('') }}>Anexar link</button>
+    </div>}
+  </div>
 }
 const RES_TXT = { aprovado: 'Aprovado para a gráfica', ressalvas: 'Aprovado com ressalvas', reprovado: 'Reprovado — corrija antes de enviar' }
 
@@ -61,6 +67,10 @@ export default function Demanda({ perfil }) {
 
   async function upload(files) {
     files = [...(files || [])]; if (!files.length) return
+    const ehValidavel = f => /\.(pdf|png|jpe?g)$/i.test(f.name) || ['application/pdf', 'image/png', 'image/jpeg'].includes(f.type)
+    const fontes = files.filter(f => !ehValidavel(f)); files = files.filter(ehValidavel)
+    for (const f of fontes) await uploadFonte(f)
+    if (!files.length) return
     setBusy('Lendo arquivo…')
     try {
       const opts = { targetW: d.largura_mm, targetH: d.altura_mm, forma: d.forma, molde: d.molde }
@@ -150,8 +160,8 @@ export default function Demanda({ perfil }) {
     }
     setBusy('')
   }
-  async function anexarLink(final) {
-    const url = prompt(final ? 'Link do arquivo final (Drive, WeTransfer…):' : 'Link do arquivo fonte (Drive, WeTransfer…):')
+  async function anexarLink(final, urlDireta) {
+    const url = urlDireta || prompt(final ? 'Link do arquivo final (Drive, WeTransfer…):' : 'Link do arquivo (Drive, WeTransfer…):')
     if (!url || !/^https?:\/\//i.test(url.trim())) return
     const nome = prompt('Nome do arquivo (ex.: Wind ISAAK.cdr):') || 'arquivo externo'
     const n = arqs.filter(a => a.fonte).length + 1
@@ -238,7 +248,7 @@ export default function Demanda({ perfil }) {
           {d.etapa === 'arte' && <>
             {d.briefing && <p className="brief">{d.briefing}</p>}
             {ult?.resultado === 'reprovado' && <p className="err">Última versão reprovada na validação técnica. Corrija os itens abaixo e envie de novo.</p>}
-            <Upload onFiles={upload} busy={busy} />
+            <Upload onFiles={upload} onLink={u => anexarLink(false, u)} busy={busy} />
             {d.designer_id !== perfil?.id && <button className="link" onClick={() => atualizar({ designer_id: perfil.id }, 'assumida', `${perfil.nome} assumiu a arte`)}>Assumir esta demanda</button>}
             <div className="forcar">
               <strong>Seguir mesmo assim</strong>
@@ -281,22 +291,18 @@ export default function Demanda({ perfil }) {
             </div>
           </>}
 
-          {(d.etapa !== 'concluida' || arqs.some(a => a.fonte)) && <details className="troca" open={arqs.some(a => a.fonte)}><summary>Arquivos fonte (CDR, AI, PSD, INDD){arqs.some(a => a.fonte) && ` · ${arqs.filter(a => a.fonte).length}`}</summary>
+          {arqs.some(a => a.fonte) && <details className="troca" open><summary>Arquivos para a gráfica (CDR, AI, PSD, links){arqs.some(a => a.fonte) && ` · ${arqs.filter(a => a.fonte).length}`}</summary>
             {arqs.filter(a => a.fonte).map(a => <div key={a.id} className="fonte">
               {fontePrevia[a.id] ? <img src={fontePrevia[a.id]} alt="prévia" /> : <div className="semprevia">{a.path.split('.').pop().toUpperCase()}</div>}
               <div><b>{a.path.split('/').pop().replace(/^fonte-\d+-/, '')}</b><br /><small className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</small><br />
-                <button className="link" onClick={() => baixar(a.path, a.url)}>{a.url ? 'abrir link' : 'baixar'}</button> · <button className="link danger" onClick={() => excluirArquivo(a)}>excluir</button> · <label className="link">{fontePrevia[a.id] ? 'trocar prévia' : 'anexar prévia (PNG/JPG)'}<input type="file" accept="image/png,image/jpeg" style={{ display: 'none' }} onChange={e => { uploadPrevia(a, e.target.files[0]); e.target.value = '' }} /></label></div>
+                <button className="link" onClick={() => baixar(a.path, a.url)}>{a.url ? 'abrir link' : 'baixar'}</button> · <button className="link danger" onClick={() => excluirArquivo(a)}>excluir</button> · <label className="link">{fontePrevia[a.id] ? 'trocar prévia' : 'anexar prévia em imagem'}<input type="file" accept="image/png,image/jpeg" style={{ display: 'none' }} onChange={e => { uploadPrevia(a, e.target.files[0]); e.target.value = '' }} /></label></div>
             </div>)}
             {aviso && <p className="ok">{aviso}</p>}
-            {d.etapa !== 'concluida' && <>
-              <p className="muted">O arquivo fonte fica guardado para a gráfica ou outro designer; não passa pela validação. Para quem não abre CDR, anexe uma prévia em imagem (exporte do Corel em PNG).</p>
-              <label className="upload small"><input type="file" accept=".cdr,.ai,.psd,.indd,.svg,.eps,.zip" onChange={e => { uploadFonte(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />{busy && busy.includes('fonte') ? busy : 'Escolher arquivo fonte (até 50 MB)'}</label>
-              <button className="link" onClick={() => anexarLink(false)}>Arquivo maior que 50 MB? Colar link do Drive / WeTransfer</button>
-            </>}
+
           </details>}
           {(d.etapa === 'aprovacao' || d.etapa === 'fechamento') && <details className="troca"><summary>Houve alteração na arte? Trocar arquivo</summary>
             <p className="muted">O novo arquivo vira a v{(arqs.filter(a => !a.fonte)[0]?.versao || 0) + 1}, passa pela validação de novo e as aprovações voltam a zero.</p>
-            <Upload onFiles={upload} busy={busy} trocar />
+            <Upload onFiles={upload} onLink={u => anexarLink(false, u)} busy={busy} trocar />
           </details>}
 
           {d.etapa === 'fechamento' && d.enviado_grafica_em && <>

@@ -45,7 +45,9 @@ export default function Grafica() {
     await registrar(d.id, 'grafica_devolveu', `Gráfica devolveu o arquivo: ${m}`, null)
     setMotivo({ ...motivo, [d.id]: '' }); carregar()
   }
-  const arquivoFinal = d => { const a = [...d.gr_arquivos].filter(x => !x.fonte).sort((x, y) => y.versao - x.versao); return a.find(x => x.final) || a[0] }
+  // ordem para a gráfica: arquivo final marcado → CDR/fonte mais recente → PDF aprovado
+  const arquivoFinal = d => { const a = [...d.gr_arquivos].sort((x, y) => (y.criado_em || '').localeCompare(x.criado_em || '')); return a.find(x => x.final) || a.find(x => x.fonte) || [...d.gr_arquivos].filter(x => !x.fonte).sort((x, y) => y.versao - x.versao)[0] }
+  const rotulo = a => a.final ? `final ${a.path.split('.').pop().toUpperCase()}` : a.fonte ? a.path.split('.').pop().toUpperCase() : 'PDF aprovado'
   const hoje = new Date().toISOString().slice(0, 10)
   const filtr = itens.filter(d => !busca || (d.titulo + ' ' + (d.candidato?.nome || '') + ' ' + d.peca).toLowerCase().includes(busca.toLowerCase()))
   const contagem = Object.fromEntries(GRUPOS.map(([k, , f]) => [k, itens.filter(f).length]))
@@ -89,7 +91,8 @@ export default function Grafica() {
                 <div className="muted">{d.candidato?.nome || 'Partido'}{d.candidato?.numero ? ` · nº ${d.candidato.numero}` : ''} · status: <b>{d._st ? ETAPAS_GRAFICA.find(x => x[0] === d._st)[1].toLowerCase() : 'aguardando recebimento'}</b></div>
               </div>
               <div className="gact" onClick={ev => ev.stopPropagation()}>
-                {a ? <button className="btn" onClick={() => baixar(a.path, a.url)}>{a.url ? 'Abrir link' : 'Baixar'} {a.final ? a.path.split('.').pop().toUpperCase() : 'PDF'}</button> : <span className="muted">sem arquivo</span>}
+                {a ? <button className="btn" onClick={() => baixar(a.path, a.url)}>{a.url ? 'Abrir link' : 'Baixar'} {rotulo(a)}</button> : <span className="muted">sem arquivo</span>}
+                {a && d.gr_arquivos.length > 1 && <small className="muted">+{d.gr_arquivos.length - 1} arquivo(s) em detalhes</small>}
                 <button className="link" onClick={() => setAberto({ ...aberto, [d.id]: !open })}>{open ? 'fechar' : 'detalhes'}</button>
               </div>
             </div>
@@ -97,8 +100,8 @@ export default function Grafica() {
               {rodape && <p className="cnpjline">{rodape}</p>}
               <div className="row">
                 {(a?.relatorio?.arquivos || []).filter(p => p !== a.path).map(p => <button key={p} className="btn ghost" onClick={() => baixar(p, a.url)}>{p.split('/').pop()}</button>)}
-                {d.gr_arquivos.filter(x => x.fonte).map(x => <button key={x.id} className="btn ghost" onClick={() => baixar(x.path, x.url)}>{x.url ? 'Link · ' : ''}Fonte {x.path.split('.').pop().toUpperCase()}</button>)}
-                {d.gr_arquivos.filter(x => x.final && x.id !== a?.id).map(x => <button key={x.id} className="btn ghost" onClick={() => baixar(x.path, x.url)}>Final v{x.versao}</button>)}
+                {d.gr_arquivos.filter(x => x.fonte && x.id !== a?.id).map(x => <button key={x.id} className="btn ghost" onClick={() => baixar(x.path, x.url)}>{x.url ? 'Link · ' : ''}Fonte {x.path.split('.').pop().toUpperCase()}</button>)}
+                {d.gr_arquivos.filter(x => !x.fonte && x.id !== a?.id).map(x => <button key={x.id} className="btn ghost" onClick={() => baixar(x.path, x.url)}>{x.final ? 'Final' : 'PDF'} v{x.versao}</button>)}
               </div>
               {d.briefing && <p className="brief">{d.briefing}</p>}
               <ol className="gsteps">
