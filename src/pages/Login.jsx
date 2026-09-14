@@ -6,7 +6,7 @@ export default function Login({ onEntrar, liberado, onSenha }) {
   const [lista, setLista] = useState([])
   const [nome, setNome] = useState('')
   const [erro, setErro] = useState('')
-  useEffect(() => { if (liberado) supabase.from('gr_perfis').select('id,nome,papel').order('nome').then(({ data }) => setLista(data || [])) }, [liberado])
+  useEffect(() => { if (liberado) supabase.from('gr_perfis').select('id,nome,papel').contains('equipes', ['grafica']).order('nome').then(({ data }) => setLista(data || [])) }, [liberado])
   async function checar(e) {
     e.preventDefault(); setErroSenha('')
     const { data, error } = await supabase.rpc('gr_checar_senha', { s: senha })
@@ -17,7 +17,9 @@ export default function Login({ onEntrar, liberado, onSenha }) {
     e.preventDefault(); setErro('')
     const n = nome.trim(); if (!n) return
     let p = lista.find(x => x.nome.toLowerCase() === n.toLowerCase())
-    if (!p) { const { data, error } = await supabase.from('gr_perfis').insert({ nome: n }).select().single(); if (error) return setErro(error.message); p = data }
+    if (!p) { const { data: ex } = await supabase.from('gr_perfis').select('id,nome,equipes').ilike('nome', n).maybeSingle()
+      if (ex) { await supabase.from('gr_perfis').update({ equipes: [...new Set([...(ex.equipes || []), 'grafica'])] }).eq('id', ex.id); p = ex }
+      else { const { data, error } = await supabase.from('gr_perfis').insert({ nome: n, equipes: ['grafica'] }).select().single(); if (error) return setErro(error.message); p = data } }
     onEntrar(p)
   }
   if (!liberado) return (

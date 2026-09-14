@@ -57,7 +57,7 @@ export default function Demanda({ perfil }) {
     for (const x of (a || []).filter(x => x.fonte && x.previa_path)) { const { data } = await supabase.storage.from('materiais').createSignedUrl(x.previa_path, 3600); fp[x.id] = data?.signedUrl }
     setFontePrevia(fp)
   }, [id])
-  useEffect(() => { carregar(); supabase.from('gr_perfis').select('id,nome').order('nome').then(({ data }) => setPerfis(data || [])); supabase.from('gr_candidatos').select('id,nome,cargo,cnpj_campanha').eq('ativo', true).order('nome').then(({ data }) => setCands(data || [])) }, [carregar])
+  useEffect(() => { carregar(); supabase.from('gr_perfis').select('id,nome').contains('equipes', ['grafica']).order('nome').then(({ data }) => setPerfis(data || [])); supabase.from('gr_candidatos').select('id,nome,cargo,cnpj_campanha').eq('ativo', true).order('nome').then(({ data }) => setCands(data || [])) }, [carregar])
 
   async function atualizar(patch, tipo, detalhe) {
     await supabase.from('gr_demandas').update(patch).eq('id', id)
