@@ -55,7 +55,7 @@ export default function Demanda({ perfil }) {
     setBusy('Lendo arquivo…')
     try {
       const opts = { targetW: d.largura_mm, targetH: d.altura_mm, forma: d.forma, molde: d.molde }
-      const versao = (arqs[0]?.versao || 0) + 1
+      const versao = (arqs.filter(a => !a.fonte)[0]?.versao || 0) + 1
       const base = `${id}/v${versao}`
       const lados = []; const uploads = []; const fontes = []
       let n = 0
@@ -125,15 +125,32 @@ export default function Demanda({ perfil }) {
     setComent('')
   }
 
+  async function uploadFonte(file) {
+    if (!file) return
+    setBusy('Anexando arquivo fonte…')
+    const ext = file.name.split('.').pop().toLowerCase()
+    const n = arqs.filter(a => a.fonte).length + 1
+    const path = `${id}/fonte-${n}.${ext}`
+    const { error } = await supabase.storage.from('materiais').upload(path, file, { contentType: file.type || 'application/octet-stream' })
+    if (error) alert('Falha: ' + error.message)
+    else {
+      await supabase.from('gr_arquivos').insert({ demanda_id: id, versao: 1000 + n, path, fonte: true, enviado_por: perfil?.id })
+      await registrar(id, 'fonte', `Arquivo fonte anexado: ${file.name}`, perfil?.id)
+      carregar()
+    }
+    setBusy('')
+  }
   async function uploadFinal(file) {
     if (!file) return
     setBusy('Enviando PDF final…')
-    const versao = (arqs[0]?.versao || 0) + 1
-    const path = `${id}/v${versao}-final.pdf`
-    const { error } = await supabase.storage.from('materiais').upload(path, file, { contentType: 'application/pdf' })
-    if (!error) {
+    const versao = (arqs.filter(a => !a.fonte)[0]?.versao || 0) + 1
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `${id}/v${versao}-final.${ext}`
+    const { error } = await supabase.storage.from('materiais').upload(path, file, { contentType: file.type || 'application/octet-stream' })
+    if (error) alert('Falha: ' + error.message)
+    else {
       await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path, final: true, enviado_por: perfil?.id })
-      await registrar(id, 'final', `PDF/X-1a final anexado (v${versao})`, perfil?.id)
+      await registrar(id, 'final', `Arquivo final para a gráfica anexado: ${file.name} (v${versao})`, perfil?.id)
       carregar()
     }
     setBusy('')
@@ -142,7 +159,7 @@ export default function Demanda({ perfil }) {
   async function baixar(path) { const { data } = await supabase.storage.from('materiais').createSignedUrl(path, 600); if (data) window.open(data.signedUrl, '_blank') }
 
   if (!d) return <main className="detail"><p className="muted">Carregando…</p></main>
-  const ult = arqs.find(a => !a.final)
+  const ult = arqs.find(a => !a.final && !a.fonte)
   const etapaNome = Object.fromEntries(ETAPAS)[d.etapa]
   const etapaIdx = ETAPAS.findIndex(e => e[0] === d.etapa)
 
@@ -211,15 +228,20 @@ export default function Demanda({ perfil }) {
             </div>
           </>}
 
+          {d.etapa !== 'concluida' && <details className="troca"><summary>Anexar arquivo fonte (CDR, AI, PSD, INDD)</summary>
+            <p className="muted">Fica guardado na demanda para a gráfica ou outro designer. Não passa pela validação — a prova e a conferência continuam saindo do PDF.</p>
+            <label className="upload small"><input type="file" accept=".cdr,.ai,.psd,.indd,.svg,.eps,.zip" onChange={e => { uploadFonte(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />Escolher arquivo fonte</label>
+          </details>}
           {(d.etapa === 'aprovacao' || d.etapa === 'fechamento') && <details className="troca"><summary>Houve alteração na arte? Trocar arquivo</summary>
-            <p className="muted">O novo arquivo vira a v{(arqs[0]?.versao || 0) + 1}, passa pela validação de novo e as aprovações voltam a zero.</p>
+            <p className="muted">O novo arquivo vira a v{(arqs.filter(a => !a.fonte)[0]?.versao || 0) + 1}, passa pela validação de novo e as aprovações voltam a zero.</p>
             <Upload onFiles={upload} busy={busy} trocar />
           </details>}
 
           {d.etapa === 'fechamento' && <>
             <ol className="check">
-              <li className={arqs.some(a => a.final) ? 'ok' : ''}>Gerar PDF/X-1a e anexar
-                <label className="upload small"><input type="file" accept="application/pdf" onChange={e => uploadFinal(e.target.files[0])} disabled={!!busy} />Anexar PDF final</label></li>
+              <li className={arqs.some(a => a.final) ? 'ok' : ''}>Anexar o arquivo final que vai para a gráfica (CDR fechado, ou PDF/X-1a)
+                <label className="upload small"><input type="file" accept=".cdr,.pdf,.ai,.zip" onChange={e => { uploadFinal(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />Anexar arquivo final</label>
+                {arqs.filter(a => a.final).map(a => <div key={a.id} className="muted">✓ {a.path.split('/').pop()}</div>)}</li>
               <li>Disparar para a gráfica
                 <div className="row"><input placeholder="Nome da gráfica" value={d.grafica || ''} onChange={e => setD({ ...d, grafica: e.target.value })} />
                   <button className="btn" onClick={() => atualizar({ grafica: d.grafica, enviado_grafica_em: new Date().toISOString(), etapa: 'concluida' }, 'fechamento', `Enviado para ${d.grafica || 'gráfica'}`)}>Marcar como enviado</button></div></li>
@@ -250,7 +272,7 @@ export default function Demanda({ perfil }) {
           </section>
           <section className="card">
             <h2>Versões</h2>
-            {arqs.map(a => <div key={a.id} className="ver"><span>v{a.versao}{a.final ? ' · final' : ''} <span className={'dot ' + (a.final ? 'ok' : { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[a.resultado])} /></span><span className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</span>{(a.relatorio?.arquivos || [a.path]).map(p => <button key={p} className="link" onClick={() => baixar(p)}>{p.split('.').pop().toUpperCase()}</button>)}</div>)}
+            {arqs.map(a => <div key={a.id} className="ver"><span>{a.fonte ? 'fonte · ' + a.path.split('.').pop().toUpperCase() : 'v' + a.versao + (a.final ? ' · final' : '')} {!a.fonte && <span className={'dot ' + (a.final ? 'ok' : { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }[a.resultado])} />}</span><span className="muted">{a.enviado?.nome} · {horaBR(a.criado_em)}</span>{(a.relatorio?.arquivos || [a.path]).map(p => <button key={p} className="link" onClick={() => baixar(p)}>{p.split('.').pop().toUpperCase()}</button>)}</div>)}
             {!arqs.length && <p className="muted">Nenhum arquivo ainda.</p>}
           </section>
           <section className="card">
