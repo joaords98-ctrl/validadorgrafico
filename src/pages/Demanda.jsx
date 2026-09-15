@@ -218,7 +218,7 @@ export default function Demanda({ perfil }) {
       {d.excluida_em && <p className="devolvido"><strong>Na lixeira</strong> desde {horaBR(d.excluida_em)} ({d.excluida_por}). Não aparece no quadro nem para o partido e a gráfica.</p>}
       <div className="head">
         <div>
-          <div className="num"><span className={'etq ' + d.origem}>{ORIGENS[d.origem]}</span> #{d.numero}{d.candidato ? ' · ' + d.candidato.nome : ''}</div>
+          <div className="num"><button type="button" className={'etq ' + d.origem} title="Clique para trocar a etiqueta" onClick={() => { const n = d.origem === 'candidato' ? 'partido' : 'candidato'; atualizar({ origem: n, ...(n === 'candidato' ? {} : { aprov_candidato: d.aprov_candidato }) }, 'etiqueta', `${perfil.nome} trocou a etiqueta para ${ORIGENS[n]}`) }}>{ORIGENS[d.origem]} ⇄</button> #{d.numero}{d.candidato ? ' · ' + d.candidato.nome : ''}</div>
           <h1>{d.titulo}</h1>
           <p className="muted">{d.peca}{d.material && ` · ${d.material}`} · {d.largura_mm && `${d.largura_mm} × ${d.altura_mm} mm`}{d.forma === 'redondo' && ' (redondo)'}{d.quantidade && ` · ${d.quantidade} un.`} · prazo {dataBR(d.prazo)}{d.designer && ` · designer: ${d.designer.nome}`}</p>
         </div>
@@ -371,9 +371,10 @@ export default function Demanda({ perfil }) {
             {evs.map(e => <div key={e.id} className="ev"><span className="muted">{horaBR(e.em)} · {e.autor?.nome}</span><br />{e.detalhe}</div>)}
           </section>
           <section className="card">
-            <h2>Dados da demanda <button className="link" onClick={() => setEdit(edit ? null : { titulo: d.titulo, largura_mm: d.largura_mm || '', altura_mm: d.altura_mm || '', quantidade: d.quantidade || '', prazo: d.prazo || '', material: d.material || '', contratante_id: d.contratante_id || '', briefing: d.briefing || '' })}>{edit ? 'cancelar' : 'editar'}</button></h2>
+            <h2>Dados da demanda <button className="link" onClick={() => setEdit(edit ? null : { titulo: d.titulo, origem: d.origem, largura_mm: d.largura_mm || '', altura_mm: d.altura_mm || '', quantidade: d.quantidade || '', prazo: d.prazo || '', material: d.material || '', contratante_id: d.contratante_id || '', briefing: d.briefing || '' })}>{edit ? 'cancelar' : 'editar'}</button></h2>
             {edit ? <>
               <label>Título<input value={edit.titulo} onChange={e => setEdit({ ...edit, titulo: e.target.value })} /></label>
+              <label>Etiqueta (origem)<select value={edit.origem} onChange={e => setEdit({ ...edit, origem: e.target.value })}><option value="candidato">Candidato</option><option value="partido">Partido</option></select></label>
               <div className="row"><label>Largura (mm)<input type="number" step="0.5" value={edit.largura_mm} onChange={e => setEdit({ ...edit, largura_mm: e.target.value })} /></label><label>Altura (mm)<input type="number" step="0.5" value={edit.altura_mm} onChange={e => setEdit({ ...edit, altura_mm: e.target.value })} /></label></div>
               <div className="row"><label>Quantidade<input type="number" value={edit.quantidade} onChange={e => setEdit({ ...edit, quantidade: e.target.value })} /></label><label>Prazo<input type="date" value={edit.prazo} onChange={e => setEdit({ ...edit, prazo: e.target.value })} /></label></div>
               <label>Material<input value={edit.material} onChange={e => setEdit({ ...edit, material: e.target.value })} /></label>

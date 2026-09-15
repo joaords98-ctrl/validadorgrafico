@@ -4,7 +4,7 @@ import { supabase, ETAPAS, ETAPAS_GRAFICA, dataBR } from '../lib/supabase'
 
 const RES = { aprovado: 'ok', ressalvas: 'warn', reprovado: 'fail' }
 
-export default function Board() {
+export default function Board({ perfil }) {
   const [itens, setItens] = useState([])
   const [busca, setBusca] = useState('')
   const [orig, setOrig] = useState('todas')
@@ -37,6 +37,7 @@ export default function Board() {
                 return (
                   <Link key={d.id} to={'/d/' + d.id} className={'cardk ' + d.origem}>
                     <span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span>
+                    <button type="button" className="etqtog" title="Trocar etiqueta (candidato ⇄ partido)" onClick={async e => { e.preventDefault(); e.stopPropagation(); const n = d.origem === 'candidato' ? 'partido' : 'candidato'; await supabase.from('gr_demandas').update({ origem: n }).eq('id', d.id); await supabase.from('gr_eventos').insert({ demanda_id: d.id, tipo: 'etiqueta', detalhe: `Etiqueta trocada para ${n}`, por: perfil?.id }); setItens(itens.map(x => x.id === d.id ? { ...x, origem: n } : x)) }}>⇄</button>
                     <div className="num">#{d.numero} · {d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}</div>
                     <div className="tit">{d.titulo}</div>
                     <div className="meta">{d.candidato?.nome || 'Partido'}</div>
