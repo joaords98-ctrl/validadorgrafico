@@ -168,7 +168,8 @@ export default function Demanda({ perfil }) {
     const versao = final ? (arqs.filter(a => !a.fonte)[0]?.versao || 0) + 1 : 1000 + n
     await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path: `${id}/${final ? 'v' + versao + '-final' : 'fonte-' + n}-${nome.replace(/\s+/g, '_')}`, url: url.trim(), fonte: !final, final, enviado_por: perfil?.id })
     await registrar(id, final ? 'final' : 'fonte', `${final ? 'Arquivo final' : 'Arquivo fonte'} por link externo: ${nome}`, perfil?.id)
-    carregar()
+    if (final && !d.enviado_grafica_em) await atualizar({ enviado_grafica_em: new Date().toISOString() }, 'fechamento', 'Enviado para a gráfica — em produção')
+    else carregar()
   }
   async function uploadPrevia(arq, file) {
     if (!file) return
@@ -189,8 +190,9 @@ export default function Demanda({ perfil }) {
     if (error) alert('Falha: ' + error.message)
     else {
       await supabase.from('gr_arquivos').insert({ demanda_id: id, versao, path, final: true, enviado_por: perfil?.id })
-      await registrar(id, 'final', `Arquivo final para a gráfica anexado: ${file.name} (v${versao})`, perfil?.id)
-      carregar()
+      await registrar(id, 'final', `Arquivo final anexado: ${file.name} (v${versao})`, perfil?.id)
+      if (!d.enviado_grafica_em) await atualizar({ enviado_grafica_em: new Date().toISOString() }, 'fechamento', 'Enviado para a gráfica — em produção')
+      else carregar()
     }
     setBusy('')
   }
@@ -317,16 +319,11 @@ export default function Demanda({ perfil }) {
             <button className="link" onClick={() => atualizar({ enviado_grafica_em: null }, 'fechamento', `${perfil.nome} desfez o envio para a gráfica`)}>Desfazer envio</button>
           </>}
           {d.etapa === 'fechamento' && !d.enviado_grafica_em && <>
-            <ol className="check">
-              <li className={arqs.some(a => a.final) ? 'ok' : ''}>Anexar o arquivo final que vai para a gráfica (CDR fechado, ou PDF/X-1a)
-                <label className="upload small"><input type="file" accept=".cdr,.pdf,.ai,.zip" onChange={e => { uploadFinal(e.target.files[0]); e.target.value = '' }} disabled={!!busy} />Anexar arquivo final</label>
-                <button className="link" onClick={() => anexarLink(true)}>ou colar link externo (arquivo grande)</button>
-                {arqs.filter(a => a.final).map(a => <div key={a.id} className="muted">✓ {a.path.split('/').pop()}{a.url && ' (link externo)'}</div>)}
-                <div className="muted">Reimpressão sem arquivo novo? Pode marcar como enviado direto no passo 2.</div></li>
-              <li>Disparar para a gráfica
-                <div className="row"><input placeholder="Nome da gráfica" value={d.grafica || ''} onChange={e => setD({ ...d, grafica: e.target.value })} />
-                  <button className="btn" onClick={() => atualizar({ grafica: d.grafica, enviado_grafica_em: new Date().toISOString() }, 'fechamento', `Enviado para ${d.grafica || 'gráfica'} — em produção`)}>Marcar como enviado</button></div></li>
-            </ol>
+            <p className="muted">Anexe o arquivo final (CDR fechado ou PDF/X-1a): ao anexar, a demanda já vai para a gráfica automaticamente.</p>
+            <label className="upload"><input type="file" accept=".cdr,.pdf,.ai,.zip" onChange={e => { uploadFinal(e.target.files[0]); e.target.value = '' }} disabled={!!busy} /><strong>Anexar arquivo final e enviar para a gráfica</strong></label>
+            <button className="link" onClick={() => anexarLink(true)}>ou colar link externo (arquivo grande)</button>
+            <p className="muted" style={{ marginTop: 14 }}>Reimpressão sem arquivo novo (a gráfica já tem o material)?</p>
+            <button className="btn ghost" onClick={() => atualizar({ enviado_grafica_em: new Date().toISOString() }, 'fechamento', 'Enviado para a gráfica sem arquivo novo (reimpressão) — em produção')}>Marcar como enviado sem arquivo</button>
           </>}
 
           {d.etapa === 'conferencia' && <>

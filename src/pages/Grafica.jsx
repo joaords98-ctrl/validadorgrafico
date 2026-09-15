@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase, registrar, dataBR, horaBR, ETAPAS_GRAFICA } from '../lib/supabase'
 
 const GRUPOS = [
-  ['novos', 'Novos — aguardando recebimento do arquivo', d => !d._st],
+  ['liberando', 'Em fechamento — a equipe ainda não liberou o arquivo final', d => !d.enviado_grafica_em],
+  ['novos', 'Novos — aguardando recebimento do arquivo', d => d.enviado_grafica_em && !d._st],
   ['producao', 'Em produção', d => d._st === 'grafica_recebeu' || d._st === 'grafica_producao'],
   ['saida', 'Expedição e transporte', d => d._st === 'grafica_expedicao' || d._st === 'grafica_transporte'],
   ['entregues', 'Entregues', d => d._st === 'grafica_entregou'],
@@ -20,7 +21,7 @@ export default function Grafica() {
   async function carregar() {
     const { data } = await supabase.from('gr_demandas')
       .select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,fonte,path,url,prova_path,previa_path,relatorio,criado_em)')
-      .in('etapa', ['fechamento', 'conferencia', 'concluida']).is('excluida_em', null).not('enviado_grafica_em', 'is', null).order('enviado_grafica_em', { ascending: false })
+      .in('etapa', ['fechamento', 'conferencia', 'concluida']).is('excluida_em', null).order('enviado_grafica_em', { ascending: false, nullsFirst: true })
     const lista = data || []
     const { data: e } = await supabase.from('gr_eventos').select('demanda_id,tipo,em').in('tipo', ETAPAS_GRAFICA.map(x => x[0]))
     const m = {}; for (const x of e || []) { m[x.demanda_id] = m[x.demanda_id] || {}; m[x.demanda_id][x.tipo] = x.em }
@@ -78,7 +79,7 @@ export default function Grafica() {
             <div className="ghead" onClick={() => setAberto({ ...aberto, [d.id]: !open })}>
               {thumb[d.id] ? <img src={thumb[d.id]} alt="" /> : <div className="semprevia">{a ? a.path.split('.').pop().toUpperCase() : '—'}</div>}
               <div className="ginfo">
-                <div className="num">#{d.numero} · enviado {horaBR(d.enviado_grafica_em)}</div>
+                <div className="num">#{d.numero} · {d.enviado_grafica_em ? 'enviado ' + horaBR(d.enviado_grafica_em) : 'aprovado, em fechamento pela equipe'}</div>
                 <h2>{d.titulo}</h2>
                 <div className="gtags">
                   <span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span>
@@ -89,7 +90,7 @@ export default function Grafica() {
                   {d.prazo && <span className={'tag ' + (atras ? 'r' : '')}>prazo {dataBR(d.prazo)}</span>}
                   {d.molde && <span className="tag">molde: wind curvo esq.</span>}
                 </div>
-                <div className="muted">{d.candidato?.nome || 'Partido'}{d.candidato?.numero ? ` · nº ${d.candidato.numero}` : ''} · status: <b>{d._st ? ETAPAS_GRAFICA.find(x => x[0] === d._st)[1].toLowerCase() : 'aguardando recebimento'}</b></div>
+                <div className="muted">{d.candidato?.nome || 'Partido'}{d.candidato?.numero ? ` · nº ${d.candidato.numero}` : ''} · status: <b>{!d.enviado_grafica_em ? 'aguardando arquivo final da equipe' : d._st ? ETAPAS_GRAFICA.find(x => x[0] === d._st)[1].toLowerCase() : 'aguardando recebimento'}</b></div>
               </div>
               <div className="gact" onClick={ev => ev.stopPropagation()}>
                 {a ? <button className="btn" onClick={() => baixar(a.path, a.url)}>{a.url ? 'Abrir link' : 'Baixar'} {rotulo(a)}</button> : <span className="muted">sem arquivo</span>}
