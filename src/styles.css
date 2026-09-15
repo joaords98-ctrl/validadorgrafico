@@ -94,3 +94,7 @@ label.link{cursor:pointer;color:var(--ink2);text-decoration:underline;display:in
 .gbody{border-top:1px solid var(--rule);padding:12px}
 @media(max-width:700px){.ghead{grid-template-columns:70px 1fr} .ghead img,.ghead .semprevia{width:70px;height:70px} .gact{grid-column:1/-1;flex-direction:row;justify-content:space-between}}
 .linkrow{margin:-4px 0 12px} .linkrow input{flex:1}
+.etq{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;padding:2px 7px;border-radius:2px;margin-bottom:4px;vertical-align:middle}
+.etq.candidato{background:#e3edf7;color:#1c4f8a;border:1px solid #9dbde0} .etq.partido{background:var(--amarelo);color:var(--ink);border:1px solid #c98a00} .etq.flavio,.etq.coordenacao{background:var(--ink);color:#fff}
+.toolbar{flex-wrap:wrap} .toolbar .chips{display:flex;gap:6px} .toolbar .chips .btn{padding:5px 10px;font-size:14px}
+.lixeira{margin:12px 0;background:#fff;border:1px solid var(--rule);padding:10px 14px;font-size:14px} .lixeira summary{cursor:pointer;font-weight:700;color:var(--ink2)}

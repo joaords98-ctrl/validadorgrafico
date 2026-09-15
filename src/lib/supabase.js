@@ -18,7 +18,7 @@ export const ETAPAS_GRAFICA = [
   ['grafica_transporte', 'Em transporte', 'material saiu para entrega'],
   ['grafica_entregou', 'Entregue', 'material entregue'],
 ]
-export const ORIGENS = { candidato: 'Candidato', partido: 'Partido', flavio: 'Coordenação' }
+export const ORIGENS = { candidato: 'Candidato', partido: 'Partido' }
 
 export async function registrar(demanda_id, tipo, detalhe, por) {
   await supabase.from('gr_eventos').insert({ demanda_id, tipo, detalhe, por })

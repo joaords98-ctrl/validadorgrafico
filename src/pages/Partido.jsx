@@ -22,7 +22,7 @@ export default function Partido() {
   const [busca, setBusca] = useState('')
   useEffect(() => {
     supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,fonte,prova_path,previa_path,resultado), gr_eventos(tipo)')
-      .order('prazo', { ascending: true, nullsFirst: false }).then(async ({ data }) => {
+      .is('excluida_em', null).order('prazo', { ascending: true, nullsFirst: false }).then(async ({ data }) => {
         const lista = data || []; setItens(lista)
         const p = {}
         for (const d of lista.filter(x => x.etapa === 'aprovacao' && !x.aprov_coordenacao)) { const a = [...d.gr_arquivos].filter(x => !x.final && !x.fonte).sort((x, y) => y.versao - x.versao)[0]; const pp = a?.prova_path || d.gr_arquivos.find(x => x.fonte && x.previa_path)?.previa_path; if (pp) { const { data: u } = await supabase.storage.from('materiais').createSignedUrl(pp, 3600); p[d.id] = u?.signedUrl } }
@@ -38,7 +38,7 @@ export default function Partido() {
     {pend.map(d => <a className="card pcard" key={d.id} href={`/c/${d.token}`}>
       {provas[d.id] && <img src={provas[d.id]} alt="" />}
       <div><div className="num">#{d.numero} · {d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}{d.quantidade ? ` · ${d.quantidade} un.` : ''}</div>
-        <b>{d.titulo}</b><div className="muted">{d.candidato?.nome || 'Partido'}{d.prazo ? ` · prazo ${dataBR(d.prazo)}` : ''}</div>
+        <span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span> <b>{d.titulo}</b><div className="muted">{d.candidato?.nome || 'Partido'}{d.prazo ? ` · prazo ${dataBR(d.prazo)}` : ''}</div>
         <div className="muted">{comQuem(d)}</div></div>
     </a>)}
     {!pend.length && <div className="card"><p className="muted">Nada pendente para o partido.</p></div>}
@@ -51,8 +51,8 @@ export default function Partido() {
         <tbody>{filtr.map(d => { const ult = [...d.gr_arquivos].filter(x => !x.fonte).sort((a, b) => b.versao - a.versao)[0]; const atras = d.prazo && d.prazo < hoje && d.etapa !== 'concluida'
           return <tr key={d.id} className={'et-' + d.etapa}>
             <td>{d.etapa === 'aprovacao' ? <a href={`/c/${d.token}`}>#{d.numero}</a> : '#' + d.numero}</td>
-            <td>{d.titulo}<br /><small className="muted">{d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}{d.quantidade ? ` · ${d.quantidade} un.` : ''}</small></td>
-            <td>{d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação')}</td>
+            <td><span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span> {d.titulo}<br /><small className="muted">{d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}{d.quantidade ? ` · ${d.quantidade} un.` : ''}</small></td>
+            <td>{d.candidato?.nome || 'Partido'}</td>
             <td><span className={'etapa ' + d.etapa}>{etapaNome[d.etapa]}</span></td>
             <td>{comQuem(d)}</td>
             <td className={atras ? 'late' : ''}>{d.prazo ? dataBR(d.prazo) : '—'}</td>

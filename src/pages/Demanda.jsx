@@ -213,9 +213,10 @@ export default function Demanda({ perfil }) {
 
   return (
     <main className="detail">
+      {d.excluida_em && <p className="devolvido"><strong>Na lixeira</strong> desde {horaBR(d.excluida_em)} ({d.excluida_por}). Não aparece no quadro nem para o partido e a gráfica.</p>}
       <div className="head">
         <div>
-          <div className="num">#{d.numero} · {ORIGENS[d.origem]}{d.candidato ? ' · ' + d.candidato.nome : ''}</div>
+          <div className="num"><span className={'etq ' + d.origem}>{ORIGENS[d.origem]}</span> #{d.numero}{d.candidato ? ' · ' + d.candidato.nome : ''}</div>
           <h1>{d.titulo}</h1>
           <p className="muted">{d.peca}{d.material && ` · ${d.material}`} · {d.largura_mm && `${d.largura_mm} × ${d.altura_mm} mm`}{d.forma === 'redondo' && ' (redondo)'}{d.quantidade && ` · ${d.quantidade} un.`} · prazo {dataBR(d.prazo)}{d.designer && ` · designer: ${d.designer.nome}`}</p>
         </div>
@@ -384,7 +385,8 @@ export default function Demanda({ perfil }) {
               <button className="btn" onClick={async () => { const p = { ...edit, largura_mm: edit.largura_mm || null, altura_mm: edit.altura_mm || null, quantidade: edit.quantidade || null, prazo: edit.prazo || null, material: edit.material || null, contratante_id: edit.contratante_id || null, briefing: edit.briefing || null }; await atualizar(p, 'editada', `${perfil.nome} editou os dados da demanda`); setEdit(null) }}>Salvar</button>
             </> : <p className="muted">Contratante: {(d.contratante || d.candidato)?.nome || '—'}{d.material && ` · ${d.material}`}{d.briefing && <><br />{d.briefing}</>}</p>}
           </section>
-          {<button className="link danger" onClick={async () => { if (confirm('Excluir esta demanda e todos os arquivos?')) { await supabase.from('gr_demandas').delete().eq('id', id); nav('/') } }}>Excluir demanda</button>}
+          {d.excluida_em ? <button className="btn" onClick={() => atualizar({ excluida_em: null, excluida_por: null }, 'restaurada', `${perfil.nome} restaurou a demanda da lixeira`)}>Restaurar da lixeira</button>
+            : <button className="link danger" onClick={() => { if (confirm('Mover esta demanda para a lixeira? Ela pode ser restaurada em até 30 dias.')) atualizar({ excluida_em: new Date().toISOString(), excluida_por: perfil.nome }, 'excluida', `${perfil.nome} moveu para a lixeira`).then(() => nav('/')) }}>Mover para a lixeira</button>}
         </aside>
       </div>
     </main>

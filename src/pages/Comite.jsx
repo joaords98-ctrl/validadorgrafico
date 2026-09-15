@@ -10,7 +10,7 @@ export default function Comite() {
   async function carregar() {
     const { data } = await supabase.from('gr_demandas')
       .select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,telefone), gr_arquivos(id,versao,final,fonte,prova_path,previa_path,relatorio)')
-      .in('etapa', ['fechamento', 'conferencia', 'concluida']).not('enviado_grafica_em', 'is', null).order('enviado_grafica_em', { ascending: false })
+      .in('etapa', ['fechamento', 'conferencia', 'concluida']).is('excluida_em', null).not('enviado_grafica_em', 'is', null).order('enviado_grafica_em', { ascending: false })
     const lista = data || []; setItens(lista)
     const { data: e } = await supabase.from('gr_eventos').select('demanda_id,tipo,em').in('tipo', ETAPAS_GRAFICA.map(x => x[0]))
     const m = {}; for (const x of e || []) { m[x.demanda_id] = m[x.demanda_id] || {}; m[x.demanda_id][x.tipo] = x.em }; setEvs(m)
@@ -39,7 +39,7 @@ export default function Comite() {
   const Card = ({ d, children }) => <div className="card gcard open"><div className="ghead" style={{ cursor: 'default' }}>
     {thumb[d.id] ? <img src={thumb[d.id]} alt="" /> : <div className="semprevia">—</div>}
     <div className="ginfo"><div className="num">#{d.numero}</div><h2>{d.titulo}</h2>
-      <div className="gtags"><span className="tag k">{d.peca}</span>{d.largura_mm && <span className="tag">{d.largura_mm} × {d.altura_mm} mm</span>}<span className="tag y">{d.quantidade ? d.quantidade.toLocaleString('pt-BR') + ' un.' : 'qtd. —'}</span>{d.prazo && <span className="tag">prazo {dataBR(d.prazo)}</span>}</div>
+      <div className="gtags"><span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span><span className="tag k">{d.peca}</span>{d.largura_mm && <span className="tag">{d.largura_mm} × {d.altura_mm} mm</span>}<span className="tag y">{d.quantidade ? d.quantidade.toLocaleString('pt-BR') + ' un.' : 'qtd. —'}</span>{d.prazo && <span className="tag">prazo {dataBR(d.prazo)}</span>}</div>
       <div className="muted">{d.candidato?.nome || 'Partido'}{d.candidato?.telefone ? ` · ${d.candidato.telefone}` : ''}</div></div>
   </div><div className="gbody">{children}</div></div>
 

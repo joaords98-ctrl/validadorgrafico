@@ -20,7 +20,7 @@ export default function Grafica() {
   async function carregar() {
     const { data } = await supabase.from('gr_demandas')
       .select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), gr_arquivos(id,versao,final,fonte,path,url,prova_path,previa_path,relatorio,criado_em)')
-      .in('etapa', ['fechamento', 'conferencia', 'concluida']).not('enviado_grafica_em', 'is', null).order('enviado_grafica_em', { ascending: false })
+      .in('etapa', ['fechamento', 'conferencia', 'concluida']).is('excluida_em', null).not('enviado_grafica_em', 'is', null).order('enviado_grafica_em', { ascending: false })
     const lista = data || []
     const { data: e } = await supabase.from('gr_eventos').select('demanda_id,tipo,em').in('tipo', ETAPAS_GRAFICA.map(x => x[0]))
     const m = {}; for (const x of e || []) { m[x.demanda_id] = m[x.demanda_id] || {}; m[x.demanda_id][x.tipo] = x.em }
@@ -81,6 +81,7 @@ export default function Grafica() {
                 <div className="num">#{d.numero} · enviado {horaBR(d.enviado_grafica_em)}</div>
                 <h2>{d.titulo}</h2>
                 <div className="gtags">
+                  <span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span>
                   <span className="tag k">{d.peca}</span>
                   {d.largura_mm && <span className="tag">{d.largura_mm} × {d.altura_mm} mm</span>}
                   {d.material && <span className="tag">{d.material}</span>}

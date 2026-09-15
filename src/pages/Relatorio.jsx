@@ -8,7 +8,7 @@ export default function Relatorio() {
   const [de, setDe] = useState(''), [ate, setAte] = useState('')
   useEffect(() => {
     supabase.from('gr_demandas').select('*, candidato:gr_candidatos!gr_demandas_candidato_id_fkey(nome,nome_completo,cargo,numero,cnpj_campanha,cnpj_grafica), contratante:gr_candidatos!gr_demandas_contratante_id_fkey(nome,cnpj_campanha,cnpj_grafica), designer:gr_perfis!gr_demandas_designer_id_fkey(nome), gr_arquivos(versao,final,resultado)')
-      .order('enviado_grafica_em', { ascending: false, nullsFirst: false }).then(({ data }) => setItens(data || []))
+      .is('excluida_em', null).order('enviado_grafica_em', { ascending: false, nullsFirst: false }).then(({ data }) => setItens(data || []))
   }, [])
   const etapaNome = Object.fromEntries(ETAPAS)
   const lista = itens.filter(d => (so === 'todas' || d.etapa === so) && (!de || (d.enviado_grafica_em || d.criado_em) >= de) && (!ate || (d.enviado_grafica_em || d.criado_em).slice(0, 10) <= ate))
@@ -16,7 +16,7 @@ export default function Relatorio() {
   const versaoFinal = d => { const a = [...(d.gr_arquivos || [])].sort((x, y) => y.versao - x.versao); return (a.find(x => x.final) || a[0])?.versao }
 
   const cols = ['Nº', 'Candidato', 'Cargo', 'Número', 'Peça', 'Tamanho (mm)', 'Quantidade', 'Etapa', 'Designer', 'Gráfica', 'Enviado em', 'Versão', 'Contratante', 'CNPJ contratante', 'CNPJ gráfica', 'Prazo', 'Conferido por', 'Conferido em', 'Retirado por', 'Retirado em']
-  const linha = d => [d.numero, d.candidato?.nome || (d.origem === 'partido' ? 'Partido' : 'Coordenação'), d.candidato?.cargo || '', d.candidato?.numero || '', d.peca, d.largura_mm ? `${d.largura_mm}×${d.altura_mm}` : '', d.quantidade || '', etapaNome[d.etapa], d.designer?.nome || '', d.grafica || '', d.enviado_grafica_em ? horaBR(d.enviado_grafica_em) : '', versaoFinal(d) ? 'v' + versaoFinal(d) : '', (d.contratante || d.candidato)?.nome || '', (d.contratante || d.candidato)?.cnpj_campanha || '', (d.contratante || d.candidato)?.cnpj_grafica || '', d.prazo ? dataBR(d.prazo) : '', d.conferido_por || '', d.conferido_em ? horaBR(d.conferido_em) : '', d.retirado_por || '', d.retirado_em ? horaBR(d.retirado_em) : '']
+  const linha = d => [d.numero, d.candidato?.nome || 'Partido', d.candidato?.cargo || '', d.candidato?.numero || '', d.peca, d.largura_mm ? `${d.largura_mm}×${d.altura_mm}` : '', d.quantidade || '', etapaNome[d.etapa], d.designer?.nome || '', d.grafica || '', d.enviado_grafica_em ? horaBR(d.enviado_grafica_em) : '', versaoFinal(d) ? 'v' + versaoFinal(d) : '', (d.contratante || d.candidato)?.nome || '', (d.contratante || d.candidato)?.cnpj_campanha || '', (d.contratante || d.candidato)?.cnpj_grafica || '', d.prazo ? dataBR(d.prazo) : '', d.conferido_por || '', d.conferido_em ? horaBR(d.conferido_em) : '', d.retirado_por || '', d.retirado_em ? horaBR(d.retirado_em) : '']
 
   function csv() {
     const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
