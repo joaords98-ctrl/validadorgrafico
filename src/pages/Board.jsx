@@ -35,7 +35,7 @@ export default function Board() {
                 const ult = [...(d.arquivos || [])].sort((a, b) => b.versao - a.versao)[0]
                 const atrasada = d.prazo && d.prazo < hoje && d.etapa !== 'concluida'
                 return (
-                  <Link key={d.id} to={'/d/' + d.id} className="cardk">
+                  <Link key={d.id} to={'/d/' + d.id} className={'cardk ' + d.origem}>
                     <span className={'etq ' + d.origem}>{d.origem === 'candidato' ? 'Candidato' : 'Partido'}</span>
                     <div className="num">#{d.numero} · {d.peca}{d.largura_mm ? ` ${d.largura_mm}×${d.altura_mm}` : ''}</div>
                     <div className="tit">{d.titulo}</div>

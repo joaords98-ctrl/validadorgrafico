@@ -98,3 +98,5 @@ label.link{cursor:pointer;color:var(--ink2);text-decoration:underline;display:in
 .etq.candidato{background:#e3edf7;color:#1c4f8a;border:1px solid #9dbde0} .etq.partido{background:var(--amarelo);color:var(--ink);border:1px solid #c98a00} .etq.flavio,.etq.coordenacao{background:var(--ink);color:#fff}
 .toolbar{flex-wrap:wrap} .toolbar .chips{display:flex;gap:6px} .toolbar .chips .btn{padding:5px 10px;font-size:14px}
 .lixeira{margin:12px 0;background:#fff;border:1px solid var(--rule);padding:10px 14px;font-size:14px} .lixeira summary{cursor:pointer;font-weight:700;color:var(--ink2)}
+.cardk.candidato{background:#eaf2fb;border-left:5px solid #1c4f8a} .cardk.partido{background:#fff3c4;border-left:5px solid #c98a00}
+.cardk.candidato .etq,.cardk.partido .etq{display:none}
